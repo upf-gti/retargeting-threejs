@@ -173,6 +173,17 @@ class Gui {
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
         panel.endLine();
+        if(this.app.currentSourceCharacter) {
+            let character = this.app.loadedCharacters[this.app.currentSourceCharacter];
+            if(character.model) {
+                panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
+                    character.model.position.set(value[0], value[1], value[2]);
+                }, {step:0.01});
+                panel.addVector3("Scale", [character.model.scale.x, character.model.scale.y, character.model.scale.z], (value, event) => {
+                    character.model.scale.set(value[0], value[1], value[2]);
+                }, {step:0.01});               
+            }
+        }
         this.createKeyframePanel(panel);
 
         panel.merge();
@@ -257,6 +268,18 @@ class Gui {
             }, {width: "40px", icon: "fa-solid fa-bone"});
         }
         panel.endLine();
+
+        if(this.app.currentCharacter) {
+            let character = this.app.loadedCharacters[this.app.currentCharacter];
+            if(character.model) {
+                panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
+                    character.model.position.set(value[0], value[1], value[2]);
+                }, {step:0.01});
+                panel.addVector3("Scale", [character.model.scale.x, character.model.scale.y, character.model.scale.z], (value, event) => {
+                    character.model.scale.set(value[0], value[1], value[2]);
+                }, {step:0.01});               
+            }
+        }
         panel.merge();
     }
 

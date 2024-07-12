@@ -111,12 +111,12 @@ class App {
 
         modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
         this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", ()=>{
-            this.changeAvatar( "ReadyEva" );
             this.gui = new Gui( this ); 
+            this.changeAvatar( "ReadyEva" );
             this.animate();
             document.getElementById("loading").style.display = "none";
             this.isAppReady = true;
-                         
+                    
         });
 
         window.addEventListener( 'resize', this.onWindowResize.bind(this) );
@@ -454,7 +454,7 @@ class App {
                 // Remove position changes (only keep i == 0, hips)
                 for (let i = 0; i < bodyAnimation.tracks.length; i++) {
 
-                    if(i && bodyAnimation.tracks[i].name.includes('position')) {
+                    if(!bodyAnimation.tracks[i].name.includes("Hips") && bodyAnimation.tracks[i].name.includes('position')) {
                         continue;
                     }
                     tracks.push(bodyAnimation.tracks[i]);

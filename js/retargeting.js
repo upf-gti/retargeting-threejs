@@ -511,7 +511,7 @@ class AnimationRetargeting {
     }
 
     /**
-     * NOT IMPLEMENTED
+     * 
      * assumes srcTrack IS a position track (VectorKeyframeTrack) with the proper values array and name (boneName.scale) 
      * @param {THREE.VectorKeyframeTrack} srcTrack 
      * @returns {THREE.VectorKeyframeTrack}
@@ -526,15 +526,48 @@ class AnimationRetargeting {
         let srcValues = srcTrack.values;
         let trgValues = new Float32Array( srcValues.length );
         if( boneIndex == 0 ) { // asume the first bone is the root
+
+            let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
+            let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
+            let srcLocalScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
+            // Scale the position with the global scale of the bone (in case the bind pose it's scaled)
+            srcBindPos.divide(srcLocalScale);
+			
+			// Check that the division is not done with a 0
+			srcBindPos.x = Math.abs(srcBindPos.x) <= 1e-6 ? 0.0 : srcBindPos.x;
+			srcBindPos.y = Math.abs(srcBindPos.y) <= 1e-6 ? 0.0 : srcBindPos.y;
+			srcBindPos.z = Math.abs(srcBindPos.z) <= 1e-6 ? 0.0 : srcBindPos.z;
+			let targetPos = trgBindPos;
+			targetPos.x = Math.abs(targetPos.x) <= 1e-6 ? 0.0 : targetPos.x;
+			targetPos.y = Math.abs(targetPos.y) <= 1e-6 ? 0.0 : targetPos.y;
+			targetPos.z = Math.abs(targetPos.z) <= 1e-6 ? 0.0 : targetPos.z;
+
+			// Compute scale = target / source to get the difference of the scale
+			let diffScale = new THREE.Vector3();
+			diffScale.x = srcBindPos.x == 0.0 ? 0.0 : Math.abs(targetPos.x / srcBindPos.x);
+			diffScale.y = srcBindPos.y == 0.0 ? 0.0 : Math.abs(targetPos.y / srcBindPos.y);
+			diffScale.z = srcBindPos.z == 0.0 ? 0.0 : Math.abs(targetPos.z / srcBindPos.z);
+						
             const offset = this.precomputedPosition;
             let pos = new THREE.Vector3();
 
             for( let i = 0; i < srcValues.length; i+=3 ){
+                
                 pos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
-                trgValues[i]   = pos.x + offset.x;
-                trgValues[i+1] = pos.y + offset.y;
-                trgValues[i+2] = pos.z + offset.z;
+                let diffPosition = new THREE.Vector3();
+                diffPosition.subVectors(pos, srcBindPos);
+                // Scale the animation difference position with the scale diff between source and target and add it to the the Target Bind Position of the bone
+			    diffPosition.multiplyScalar(diffScale.y).add(trgBindPos);
+                
+                if(this.trgBindPose.bones[this.boneMap.idxMap[ boneIndex ] ].parent) { // Convert to local space
+                    //this.trgBindPose.bones[this.boneMap.idxMap[ boneIndex ] ].worldToLocal(diffPosition); // WRONG
+                }
+                trgValues[i]   = diffPosition.x ;
+                trgValues[i+1] = diffPosition.y ;
+                trgValues[i+2] = diffPosition.z ;
+                
             }
+    
         }
         // TODO missing interpolation mode. Assuming always linear. Also check if arrays are copied or referenced
         return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".position", srcTrack.times, trgValues ); 
