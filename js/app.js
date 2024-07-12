@@ -161,7 +161,7 @@ class App {
             character.skeletonHelper.visible = this.showSkeletons;
             this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
         }
-  
+        character.model.position.x = 1;
         this.onChangeAvatar(avatarName);
        
         if(this.currentSourceCharacter) {
