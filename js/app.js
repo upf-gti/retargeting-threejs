@@ -156,9 +156,12 @@ class App {
         
         this.currentCharacter = avatarName;
         const character =  this.loadedCharacters[this.currentCharacter];
-        character.skeletonHelper.visible = this.showSkeletons;
         this.scene.add( character.model ); // add model to scene
-        this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
+        if(character.skeletonHelper) {
+            character.skeletonHelper.visible = this.showSkeletons;
+            this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
+        }
+  
         this.onChangeAvatar(avatarName);
        
         if(this.currentSourceCharacter) {
@@ -178,9 +181,11 @@ class App {
         this.currentSourceCharacter = avatarName;
         const character =  this.loadedCharacters[this.currentSourceCharacter];
         character.model.position.x = -1;
-        character.skeletonHelper.visible = this.showSkeletons;
         this.scene.add( character.model ); // add model to scene
-        this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
+        if(character.skeletonHelper) {
+            character.skeletonHelper.visible = this.showSkeletons;
+            this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
+        }
         //this.changePlayState(this.playing);
         this.sourceMixer = this.loadedCharacters[avatarName].mixer;  
         let animations = character.animations;
@@ -302,6 +307,16 @@ class App {
         });
     }
 
+    loadAnimation( modelFilePath, modelRotation, avatarName, callback = null ) {
+        
+        const data = this.loaderBVH.parseExtended(modelFilePath);
+        this.loadBVHAnimation( avatarName, data );
+
+        if(callback) {
+            callback();
+        }        
+    } 
+
     changePlayState(state = !this.playing) {
         this.playing = state;
         if(this.playing && this.mixer) {
@@ -312,7 +327,7 @@ class App {
     changeSkeletonsVisibility(visibility) {
         this.showSkeletons = visibility;
         
-        if(this.currentSourceCharacter) {
+        if(this.currentSourceCharacter && this.loadedCharacters[this.currentSourceCharacter].skeletonHelper) {
             this.loadedCharacters[this.currentSourceCharacter].skeletonHelper.visible = visibility;
         }
         if(this.currentCharacter) {
@@ -371,7 +386,7 @@ class App {
             skeleton = new THREE.Skeleton( skeleton.bones ); // will automatically compute boneInverses
             
             animationData.skeletonAnim.clip.tracks.forEach( b => { b.name = b.name.replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "") } );     
-            animationData.skeletonAnim.clip.name = "bodyAnimation";
+            animationData.skeletonAnim.clip.name = name;
             bodyAnimation = animationData.skeletonAnim.clip;
         }
         
@@ -382,11 +397,25 @@ class App {
         
         this.loadedAnimations[name] = {
             name: name,
-            bodyAnimation: bodyAnimation ?? new THREE.AnimationClip( "bodyAnimation", -1, [] ),
-            faceAnimation: faceAnimation ?? new THREE.AnimationClip( "faceAnimation", -1, [] ),
+            animation: bodyAnimation ?? new THREE.AnimationClip( "bodyAnimation", -1, [] ),
+            faceAnimation,
             skeleton,
             type: "bvhe"
         };
+
+        let boneContainer = new THREE.Group();
+        boneContainer.add( skeleton.bones[0] );
+        boneContainer.position.x = -1;
+        this.scene.add( boneContainer );
+        let skeletonHelper = new THREE.SkeletonHelper(boneContainer);
+        skeletonHelper.name = name;
+        skeletonHelper.skeleton = skeleton;
+        skeletonHelper.changeColor( 0xFF0000, 0xFFFF00 );
+        
+        this.loadedCharacters[name] ={
+            model: skeletonHelper, skeleton, animations: [this.loadedAnimations[name].animation]
+        }
+        this.onLoadAvatar(skeletonHelper, skeleton);
     }
 
     /**
@@ -493,3 +522,18 @@ export {App}
 const app = new App();
 app.init();
 window.app = app;
+
+ // ADDON SkeletonHelper
+
+ THREE.SkeletonHelper.prototype.changeColor = function ( a, b ) {
+
+       //Change skeleton helper lines colors
+       let colorArray = this.geometry.attributes.color.array;
+       for(let i = 0; i < colorArray.length; i+=6) { 
+           colorArray[i+3] = 58/256; 
+           colorArray[i+4] = 161/256; 
+           colorArray[i+5] = 156/256;
+       }
+       this.geometry.attributes.color.array = colorArray;
+       this.material.linewidth = 3;
+}

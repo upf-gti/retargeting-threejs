@@ -93,18 +93,28 @@ class Gui {
             
             // upload model
             if (value == "Upload Animation or Avatar") {
-                this.uploadAvatar((value) => {
+                this.uploadAvatar((value, extension) => {
                     
                     if ( !this.app.loadedCharacters[value] ) {
                         document.getElementById("loading").style.display = "block";
 
                         let modelFilePath = this.avatarOptions[value][0]; 
                         let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                        this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
-                            avatars.push({ value: value, src: "data/imgs/monster.png"});
-                            this.app.changeSourceAvatar(value);
-                            document.getElementById("loading").style.display = "none";
-                        } );
+                        
+                        if( extension == "glb" || extension == "gltf" ) {
+                            this.app.loadAvatar(modelFilePath, modelRotation, value, () => { 
+                                avatars.push({ value: value, src: "data/imgs/monster.png"});
+                                this.app.changeSourceAvatar(value);
+                                document.getElementById("loading").style.display = "none";
+                            } );
+                        }
+                        else if( extension == "bvh" || extension == "bvhe") {
+                            this.app.loadAnimation(modelFilePath, modelRotation, value, () => {
+                                avatars.push({ value: value, src: "data/imgs/monster.png"});
+                                this.app.changeSourceAvatar(value);
+                                document.getElementById("loading").style.display = "none";
+                            })
+                        }
                         return;
                     } 
 
@@ -112,7 +122,7 @@ class Gui {
                     this.app.changeSourceAvatar(value);
                     // TO  DO: load animations if it has someone
 
-                });
+                }, true);
             }
             else {
                 // load desired model
@@ -133,26 +143,33 @@ class Gui {
         });
 
         panel.addButton( null, "Upload Animation or Avatar", (v) => {
-            this.uploadAvatar((value) => {
+            this.uploadAvatar((value, extension) => {
                     
                 if ( !this.app.loadedCharacters[value] ) {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
-                        avatars.push({ value: value, src: "data/imgs/monster.png"});
-                        this.app.changeSourceAvatar(value);
-                        document.getElementById("loading").style.display = "none";
-                        // TO  DO: load animations if it has someone
-
-                    } );
+                    if( extension == "glb" || extension == "gltf" ) {
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, () => { 
+                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.changeSourceAvatar(value);
+                            document.getElementById("loading").style.display = "none";
+                        } );
+                    }
+                    else if( extension == "bvh" || extension == "bvhe") {
+                        this.app.loadAnimation(modelFilePath, modelRotation, value, () => {
+                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.changeSourceAvatar(value);
+                            document.getElementById("loading").style.display = "none";
+                        })
+                    }
                     return;
                 } 
 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
 
-            });
+            }, true);
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
         panel.endLine();
@@ -257,35 +274,50 @@ class Gui {
         panel.endLine(); 
     }
 
-    uploadAvatar(callback = null) {
-        let name, model;
+    uploadAvatar(callback = null, isSource = false) {
+        let name, model, extension;
         let rotation = 0;
     
-        this.avatarDialog = new LX.Dialog("Upload Animation/Avatar", panel => {
+        let text = "Avatar"; 
+        if(isSource) {
+            text = "Animation/Avatar ";
+        }
+
+        this.avatarDialog = new LX.Dialog("Upload " + text , panel => {
             
-            let nameWidget = panel.addText("Name Your Source", name, (v, e) => {
+            let nameWidget = panel.addText("Name Your " + text, name, (v, e) => {
                 if (this.avatarOptions[v]) LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]});
                 name = v;
             });
 
-            let avatarFile = panel.addFile("Animation/Avatar File", (v, e) => {
-                let files = panel.widgets["Animation/avatar File"].domEl.children[1].files;
+            let avatarFile = panel.addFile(text + " File", (v, e) => {
+                let files = panel.widgets[text + " File"].domEl.children[1].files;
                 if(!files.length) {
                     return;
                 }
                 const path = files[0].name.split(".");
                 const filename = path[0];
-                const extension = path[1];
-                if (extension == "glb" || extension == "gltf") { 
+                extension = path[1];
+                const reader = new FileReader();
+                if (extension == "glb" || extension == "gltf" || isSource && (extension == "bvh" || extension == "bvhe")) { 
                     model = v;
                     if(!name) {
                         name = filename;
                         nameWidget.set(name)
                     }
+                    if(extension == "glb" || extension == "gltf") {
+                        reader.readAsDataURL(files[0]);
+                    }
+                    else {
+                        reader.readAsText(files[0]);                    
+                    }
+                    reader.onload = (e) => {
+                        model = e.target.result;
+                    }
                 }
-                else { LX.popup("Only accepts GLB and GLTF formats!"); }
+                else { LX.popup("Only accepts GLB and GLTF formats or BVH and BVHE (only for animations)!"); }
                 
-            }, {type: "url"});
+            }, {read: false});
             
             panel.addNumber("Apply Rotation", 0, (v) => {
                 rotation = v * Math.PI / 180;
@@ -293,12 +325,12 @@ class Gui {
             
             panel.addButton(null, "Upload", () => {
                 if (name && model) {
-                    if (this.avatarOptions[name]) { LX.popup("This avatar name is taken. Please, change it.", null, { position: ["45%", "20%"]}); return; }
+                    if (this.avatarOptions[name]) { LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]}); return; }
                     this.avatarOptions[name] = [model, rotation, "data/imgs/monster.png"];
                     
                     panel.clear();
                     this.avatarDialog.root.remove();
-                    if (callback) callback(name);
+                    if (callback) callback(name, extension);
                 }
                 else {
                     LX.popup("Complete all fields!", null, { position: ["45%", "20%"]});
@@ -315,7 +347,7 @@ class Gui {
                     const path = files[i].name.split(".");
                     const filename = path[0];
                     const extension = path[1];
-                    if (extension == "glb" || extension == "gltf") { 
+                    if (extension == "glb" || extension == "gltf" || isSource && (extension == "bvh" || extension == "bvhe")) { 
                         // Create a data transfer object
                         const dataTransfer = new DataTransfer();
                         // Add file to the file list of the object
