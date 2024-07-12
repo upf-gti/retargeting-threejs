@@ -7,15 +7,15 @@ class Gui {
     constructor( app ){
         this.app = app;
         
-        // available model models paths - [model, config, rotation]
+        // available model models paths - [model, rotation]
         this.avatarOptions = {
-            "Eva": ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 'https://webglstudio.org/3Dcharacters/Eva/Eva.json', 0, 'https://webglstudio.org/3Dcharacters/Eva/Eva.png'],
-            "EvaLow": ['https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.glb', 'https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.json', 0, 'https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.png'],
-            "ReadyEva": ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.json', 0, 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.png'],
-            "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.json', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png'],
-            "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.json', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png'],
-            "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 'https://webglstudio.org/3Dcharacters/Ada/Ada.json',0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png'],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', 'https://webglstudio.org/3Dcharacters/Woman/Woman.json',0, 'https://webglstudio.org/3Dcharacters/Woman/Woman.png']
+            "Eva": ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva/Eva.png'],
+            "EvaLow": ['https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.png'],
+            "ReadyEva": ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.png'],
+            "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png'],
+            "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png'],
+            "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png'],
+            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', 0, 'https://webglstudio.org/3Dcharacters/Woman/Woman.png']
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
@@ -42,165 +42,16 @@ class Gui {
 
         let pocketDialog = new LX.PocketDialog( "Controls", p => {
             this.panel = p;
-
-            p.sameLine();
+           
             let avatars = [];
             for(let avatar in this.avatarOptions) {
-                avatars.push({ value: avatar, src: this.avatarOptions[avatar][3] ?? "data/imgs/monster.png"});
+                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"});
             }
             this.panel.refresh = () =>{
                 this.panel.clear();
-                // SOURCE AVATAR/ANIMATION
-                p.addDropdown("Source", avatars, this.app.currentSourceCharacter, (value, event) => {
-                    
-                    // upload model
-                    if (value == "Upload Avatar") {
-                        this.uploadAvatar((value) => {
-                            
-                            if ( !this.app.loadedCharacters[value] ) {
-                                document.getElementById("loading").style.display = "block";
+                this.createSourcePanel(this.panel, avatars);
 
-                                let modelFilePath = this.avatarOptions[value][0]; 
-                                let configFilePath = this.avatarOptions[value][1]; 
-                                let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                                this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                    avatars.push({ value: value, src: "data/imgs/monster.png"});
-                                    this.app.changeSourceAvatar(value);
-                                    document.getElementById("loading").style.display = "none";
-                                } );
-                                return;
-                            } 
-
-                            // use controller if it has been already loaded in the past
-                            this.app.changeSourceAvatar(value);
-                            // TO  DO: load animations if it has someone
-
-                        });
-                    }
-                    else {
-                        // load desired model
-                        if ( !this.app.loadedCharacters[value] ) {
-                            document.getElementById("loading").style.display = "block";
-                            let modelFilePath = this.avatarOptions[value][0]; 
-                            let configFilePath = this.avatarOptions[value][1]; 
-                            let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                            this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                this.app.changeSourceAvatar(value);
-                                // TO  DO: load animations if it has someone
-                                document.getElementById("loading").style.display = "none";
-                            } );
-                            return;
-                        } 
-                        // use controller if it has been already loaded in the past
-                        this.app.changeSourceAvatar(value);
-                    }
-                });
-
-                p.addButton( null, "Upload Avatar", (v) => {
-                    this.uploadAvatar((value) => {
-                            
-                        if ( !this.app.loadedCharacters[value] ) {
-                            document.getElementById("loading").style.display = "block";
-                            let modelFilePath = this.avatarOptions[value][0]; 
-                            let configFilePath = this.avatarOptions[value][1]; 
-                            let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                            this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                avatars.push({ value: value, src: "data/imgs/monster.png"});
-                                this.app.changeSourceAvatar(value);
-                                document.getElementById("loading").style.display = "none";
-                                // TO  DO: load animations if it has someone
-
-                            } );
-                            return;
-                        } 
-
-                        // use controller if it has been already loaded in the past
-                        this.app.changeSourceAvatar(value);
-
-                    });
-                } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
-                p.endLine();
-                if(this.app.currentSourceCharacter) {
-                    p.addButton(null, "Apply retargeting", () => {
-                        this.app.applyRetargeting();
-                    })
-                }
-                                
-                p.sameLine();
-                // TARGET AVATAR
-                p.addDropdown("Target avatar", avatars, this.app.currentCharacter, (value, event) => {
-                    
-                    // upload model
-                    if (value == "Upload Avatar") {
-                        this.uploadAvatar((value) => {
-                            
-                            if ( !this.app.loadedCharacters[value] ) {
-                                document.getElementById("loading").style.display = "block";
-
-                                let modelFilePath = this.avatarOptions[value][0]; 
-                                let configFilePath = this.avatarOptions[value][1]; 
-                                let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                                this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                    avatars.push({ value: value, src: "data/imgs/monster.png"});
-                                    this.app.changeAvatar(value);
-                                    document.getElementById("loading").style.display = "none";
-                                } );
-                                return;
-                            } 
-
-                            // use controller if it has been already loaded in the past
-                            this.app.changeAvatar(value);
-                            // TO  DO: load animations if it has someone
-
-                        });
-                    }
-                    else {
-                        // load desired model
-                        if ( !this.app.loadedCharacters[value] ) {
-                            document.getElementById("loading").style.display = "block";
-                            let modelFilePath = this.avatarOptions[value][0]; 
-                            let configFilePath = this.avatarOptions[value][1]; 
-                            let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                            this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                avatars.push({ value: value, src: "data/imgs/monster.png"});
-                                this.app.changeAvatar(value);
-                                // TO  DO: load animations if it has someone
-                                document.getElementById("loading").style.display = "none";
-                            } );
-                            return;
-                        } 
-
-                        // use controller if it has been already loaded in the past
-                        this.app.changeAvatar(value);
-                    }
-                });
-
-                p.addButton( null, "Upload Avatar", (v) => {
-                    this.uploadAvatar((value) => {
-                            
-                        if ( !this.app.loadedCharacters[value] ) {
-                            document.getElementById("loading").style.display = "block";
-                            let modelFilePath = this.avatarOptions[value][0]; 
-                            let configFilePath = this.avatarOptions[value][1]; 
-                            let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][2] ); 
-                            this.app.loadAvatar(modelFilePath, configFilePath, modelRotation, value, ()=>{ 
-                                avatars.push({ value: value, src: "data/imgs/monster.png"});
-                                this.app.changeAvatar(value);
-                                document.getElementById("loading").style.display = "none";
-                                // TO  DO: load animations if it has someone
-
-                            } );
-                            return;
-                        } 
-
-                        // use controller if it has been already loaded in the past
-                        this.app.changeAvatar(value);
-
-                    });
-                } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
-                
-                p.endLine();
-              
+                this.createTargetPanel(this.panel, avatars);
                 // if(this.app.currentSourceCharacter) {
 
                 //     p.addButton(null, "Apply original bind position", () => {
@@ -208,16 +59,18 @@ class Gui {
                 //         character.skeleton = character.bindSkeleton;
                 //         character.skeleton.update();
                 //     })
-                // }
-                p.addCheckbox("Show skeleton", this.app.showSkeletons, (v) => {
+                // }                                
+                
+                p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
                     this.app.changeSkeletonsVisibility(v);
                 })
 
-                p.branch("Animation", {icon: "fa-solid fa-hands-asl-interpreting"});
+                if(this.app.currentSourceCharacter) {
+                    p.addButton(null, "Apply retargeting", () => {
+                        this.app.applyRetargeting();
+                    }, { width: "200px"})
+                }
                 
-                this.createKeyframePanel(p);
-                
-                p.merge();
             }
 
             this.panel.refresh();           
@@ -231,8 +84,167 @@ class Gui {
 
     }
 
+    createSourcePanel(panel, avatars) {
+        // SOURCE AVATAR/ANIMATION
+        panel.branch("Source", {icon: "fa-solid fa-child-reaching"});
+
+        panel.sameLine();
+        panel.addDropdown("Source", avatars, this.app.currentSourceCharacter, (value, event) => {
+            
+            // upload model
+            if (value == "Upload Animation or Avatar") {
+                this.uploadAvatar((value) => {
+                    
+                    if ( !this.app.loadedCharacters[value] ) {
+                        document.getElementById("loading").style.display = "block";
+
+                        let modelFilePath = this.avatarOptions[value][0]; 
+                        let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.changeSourceAvatar(value);
+                            document.getElementById("loading").style.display = "none";
+                        } );
+                        return;
+                    } 
+
+                    // use controller if it has been already loaded in the past
+                    this.app.changeSourceAvatar(value);
+                    // TO  DO: load animations if it has someone
+
+                });
+            }
+            else {
+                // load desired model
+                if ( !this.app.loadedCharacters[value] ) {
+                    document.getElementById("loading").style.display = "block";
+                    let modelFilePath = this.avatarOptions[value][0]; 
+                    let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                        this.app.changeSourceAvatar(value);
+                        // TO  DO: load animations if it has someone
+                        document.getElementById("loading").style.display = "none";
+                    } );
+                    return;
+                } 
+                // use controller if it has been already loaded in the past
+                this.app.changeSourceAvatar(value);
+            }
+        });
+
+        panel.addButton( null, "Upload Animation or Avatar", (v) => {
+            this.uploadAvatar((value) => {
+                    
+                if ( !this.app.loadedCharacters[value] ) {
+                    document.getElementById("loading").style.display = "block";
+                    let modelFilePath = this.avatarOptions[value][0]; 
+                    let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                        avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        this.app.changeSourceAvatar(value);
+                        document.getElementById("loading").style.display = "none";
+                        // TO  DO: load animations if it has someone
+
+                    } );
+                    return;
+                } 
+
+                // use controller if it has been already loaded in the past
+                this.app.changeSourceAvatar(value);
+
+            });
+        } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
+        
+        panel.endLine();
+        this.createKeyframePanel(panel);
+
+        panel.merge();
+    }
+
+    createTargetPanel(panel, avatars) {
+        // TARGET AVATAR
+        panel.branch("Target", {icon: "fa-solid fa-people-arrows"});
+        panel.sameLine();
+        panel.addDropdown("Target avatar", avatars, this.app.currentCharacter, (value, event) => {
+            
+            // upload model
+            if (value == "Upload Avatar") {
+                this.uploadAvatar((value) => {
+                    
+                    if ( !this.app.loadedCharacters[value] ) {
+                        document.getElementById("loading").style.display = "block";
+
+                        let modelFilePath = this.avatarOptions[value][0]; 
+                        let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.changeAvatar(value);
+                            document.getElementById("loading").style.display = "none";
+                        } );
+                        return;
+                    } 
+
+                    // use controller if it has been already loaded in the past
+                    this.app.changeAvatar(value);
+                    // TO  DO: load animations if it has someone
+
+                });
+            }
+            else {
+                // load desired model
+                if ( !this.app.loadedCharacters[value] ) {
+                    document.getElementById("loading").style.display = "block";
+                    let modelFilePath = this.avatarOptions[value][0]; 
+                    let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                        avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        this.app.changeAvatar(value);
+                        // TO  DO: load animations if it has someone
+                        document.getElementById("loading").style.display = "none";
+                    } );
+                    return;
+                } 
+
+                // use controller if it has been already loaded in the past
+                this.app.changeAvatar(value);
+            }
+        });
+
+        panel.addButton( null, "Upload Avatar", (v) => {
+            this.uploadAvatar((value) => {
+                    
+                if ( !this.app.loadedCharacters[value] ) {
+                    document.getElementById("loading").style.display = "block";
+                    let modelFilePath = this.avatarOptions[value][0]; 
+                    let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                        avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        this.app.changeAvatar(value);
+                        document.getElementById("loading").style.display = "none";
+                        // TO  DO: load animations if it has someone
+
+                    } );
+                    return;
+                } 
+
+                // use controller if it has been already loaded in the past
+                this.app.changeAvatar(value);
+
+            });
+        } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
+        
+        if(this.app.currentSourceCharacter && this.app.currentCharacter) {
+
+            panel.addButton(null, "Edit mapping", () => {
+                this.showBoneMapping();
+            }, {width: "40px", icon: "fa-solid fa-bone"});
+        }
+        panel.endLine();
+        panel.merge();
+    }
+
     createKeyframePanel(panel) {
-      
+        panel.addTitle("Animation", {icon: "fa-solid fa-hands-asl-interpreting"});
         panel.sameLine();
         panel.addDropdown("Animation", Object.keys(this.app.loadedAnimations), this.app.currentAnimation, (v) => {
             this.app.onChangeAnimation(v);
@@ -246,18 +258,18 @@ class Gui {
     }
 
     uploadAvatar(callback = null) {
-        let name, model, config;
+        let name, model;
         let rotation = 0;
     
-        this.avatarDialog = new LX.Dialog("Upload Avatar", panel => {
+        this.avatarDialog = new LX.Dialog("Upload Animation/Avatar", panel => {
             
-            let nameWidget = panel.addText("Name Your Avatar", name, (v, e) => {
-                if (this.avatarOptions[v]) LX.popup("This avatar name is taken. Please, change it.", null, { position: ["45%", "20%"]});
+            let nameWidget = panel.addText("Name Your Source", name, (v, e) => {
+                if (this.avatarOptions[v]) LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]});
                 name = v;
             });
 
-            let avatarFile = panel.addFile("Avatar File", (v, e) => {
-                let files = panel.widgets["Avatar File"].domEl.children[1].files;
+            let avatarFile = panel.addFile("Animation/Avatar File", (v, e) => {
+                let files = panel.widgets["Animation/avatar File"].domEl.children[1].files;
                 if(!files.length) {
                     return;
                 }
@@ -275,25 +287,14 @@ class Gui {
                 
             }, {type: "url"});
             
-            let configFile = panel.addFile("Config File", (v, e) => {
-               
-                let extension = panel.widgets["Config File"].domEl.children[1].files[0].name.split(".")[1];
-                if (extension == "json") { config = JSON.parse(v); }
-                else { LX.popup("Config file must be a JSON!"); }
-            }, {type: "text"});
-            
             panel.addNumber("Apply Rotation", 0, (v) => {
                 rotation = v * Math.PI / 180;
             }, { min: -180, max: 180, step: 1 } );
             
-            panel.sameLine(2);
-            panel.addButton(null, "Create Config File", () => {
-                window.open("https://webglstudio.org/projects/signon/performs-atelier", '_blank').focus();
-            })
             panel.addButton(null, "Upload", () => {
-                if (name && model && config) {
+                if (name && model) {
                     if (this.avatarOptions[name]) { LX.popup("This avatar name is taken. Please, change it.", null, { position: ["45%", "20%"]}); return; }
-                    this.avatarOptions[name] = [model, config, rotation, "data/imgs/monster.png"];
+                    this.avatarOptions[name] = [model, rotation, "data/imgs/monster.png"];
                     
                     panel.clear();
                     this.avatarDialog.root.remove();
@@ -329,18 +330,6 @@ class Gui {
                             nameWidget.set(name)
                         }
                     }
-                    else if (extension == "json") { 
-                        // Create a data transfer object
-                        const dataTransfer = new DataTransfer();
-                        // Add file to the file list of the object
-                        dataTransfer.items.add(files[i]);
-                        // Save the file list to a new variable
-                        const fileList = dataTransfer.files;
-                        configFile.domEl.children[1].files = fileList;
-                        configFile.domEl.children[1].dispatchEvent(new Event('change'), { bubbles: true });
-
-                        //config = JSON.parse(files[i]); 
-                    }
                 }
             })
 
@@ -348,6 +337,44 @@ class Gui {
 
         return name;
     }
+
+    showBoneMapping() {
+        let dialog = new LX.Dialog("Bone Mapping", panel => { 
+            let htmlStr = "Select the corresponding bone name of your avatar to match the provided list of bone names. An automatic selection is done, adjust if needed.";
+            panel.addTextArea(null, htmlStr, null, {disabled: true, fitHeight: true});
+            const bones = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones;
+            let bonesName = [];
+            for(let i = 0; i < bones.length; i++) {
+                bonesName.push(bones[i].name);
+            }
+            let i = 0;
+            for (const part in this.app.retargeting.boneMap.nameMap) {
+                if ((i % 2) == 0) panel.sameLine(2);
+                i++;
+                panel.addDropdown(part, bonesName, this.app.retargeting.boneMap.nameMap[part], (value, event) => {
+                    this.app.retargeting.boneMap.nameMap[part] = value;
+                    const srcIdx = findIndexOfBoneByName(this.app.retargeting.srcSkeleton, part);
+                    this.app.retargeting.boneMap.idxMap[srcIdx] = i;
+                    
+                }, {filter: true});
+            }
+        }, { size: ["80%", "70%"], closable: true, onclose: () => {
+            if(this.app.currentAnimation) {
+                this.app.bindAnimationToCharacter(this.app.currentAnimation, this.app.currentCharacter);
+            }
+            dialog.panel.clear();
+            dialog.root.remove();
+        } });        
+    }
+}
+
+function findIndexOfBoneByName( skeleton, name ){
+    if ( !name ){ return -1; }
+    let b = skeleton.bones;
+    for( let i = 0; i < b.length; ++i ){
+        if ( b[i].name == name ){ return i; }
+    }
+    return -1;
 }
 
 export {Gui}

@@ -104,14 +104,14 @@ class App {
         if(urlParams.has('controls')) {
             showControls = !(urlParams.get('controls') === "false");
         }
-        // let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', 'https://webglstudio.org/3Dcharacters/Woman/Woman.json', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        // this.loadAvatar(modelToLoad[0], modelToLoad[1], modelToLoad[2], "Woman", ()=>{
-        //     this.changeSourceAvatar( "Woman" );                         
-        // });
+        let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+        this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", ()=>{
+            this.changeSourceAvatar( "Woman" );                         
+        });
 
-        let modelToLoad = ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 'https://webglstudio.org/3Dcharacters/Eva/Eva.json', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], modelToLoad[2], "Eva", ()=>{
-            this.changeAvatar( "Eva" );
+        modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+        this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", ()=>{
+            this.changeAvatar( "ReadyEva" );
             this.gui = new Gui( this ); 
             this.animate();
             document.getElementById("loading").style.display = "none";
@@ -202,12 +202,11 @@ class App {
             const target = this.loadedCharacters[this.currentCharacter];
             this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
         }
-        // character.skeleton.getBoneByName( character.config.boneMap["ShouldersUnion"] ).getWorldPosition( this.controls.target );
-        // this.controls.update();
+              
         if ( this.gui ){ this.gui.refresh(); }
     }
 
-    loadAvatar( modelFilePath, configFilePath, modelRotation, avatarName, callback = null ) {
+    loadAvatar( modelFilePath, modelRotation, avatarName, callback = null ) {
         this.loaderGLB.load( modelFilePath, (glb) => {
             let model = glb.scene;
             model.quaternion.premultiply( modelRotation );
@@ -294,24 +293,12 @@ class App {
             this.loadedCharacters[avatarName] ={
                 model, skeleton, restSkeleton: skeleton.clone(), bindSkeleton, animations, skeletonHelper
             }
-
-            if(typeof(configFilePath) == 'string') {
-
-                fetch( configFilePath ).then(response => response.text()).then( (text) =>{
-                    let config = JSON.parse( text ); 
-                    this.onLoadAvatar(model, config, skeleton);
-                    if (callback) {
-                        callback();
-                    }
-                })
+            
+            this.onLoadAvatar(model, skeleton);
+            if (callback) {
+                callback();
             }
-            else {
-                let config = configFilePath; 
-                this.onLoadAvatar(model, config, skeleton);
-                if (callback) {
-                    callback();
-                }
-            }
+        
         });
     }
 
@@ -326,18 +313,17 @@ class App {
         this.showSkeletons = visibility;
         
         if(this.currentSourceCharacter) {
-            this.loadedCharacters[this.currentSourceCharacter].visible = visibility;
+            this.loadedCharacters[this.currentSourceCharacter].skeletonHelper.visible = visibility;
         }
         if(this.currentCharacter) {
-            this.loadedCharacters[this.currentCharacter].visible = visibility;
+            this.loadedCharacters[this.currentCharacter].skeletonHelper.visible = visibility;
         }
     }
 
-    onLoadAvatar(newAvatar, config, skeleton){      
+    onLoadAvatar(newAvatar, skeleton){      
         // Create mixer for animation
         const mixer = new THREE.AnimationMixer(newAvatar);  
         this.loadedCharacters[newAvatar.name].mixer = mixer;
-        this.loadedCharacters[newAvatar.name].config = config;
     }
 
     onChangeAvatar(avatarName) {
@@ -355,6 +341,9 @@ class App {
     onChangeAnimation(animationName) {
         if(!this.loadedAnimations[animationName]) {
             console.warn(animationName + 'not found')
+        }
+        if(this.currentAnimation) {
+            this.sourceMixer.uncacheClip(this.loadedAnimations[this.currentAnimation].animation);
         }
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
         this.currentAnimation = animationName;

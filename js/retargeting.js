@@ -99,11 +99,7 @@ class AnimationRetargeting {
             let boneInverses = new Array( skeleton.boneInverses.length );
             for( let i = 0; i < boneInverses.length; ++i ){ boneInverses[i] = skeleton.boneInverses[i].clone(); }
             resultSkeleton = new THREE.Skeleton( resultBones, boneInverses );
-            // forceBindPoseQuats( resultSkeleton );
-            //if(skeleton == this.trgSkeleton) {
-    
-                
-            //}
+           
         }
         
         resultSkeleton.parentIndices = parentIndices; // add this attribute to the THREE.Skeleton class
