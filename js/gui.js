@@ -71,6 +71,7 @@ class Gui {
                 if(this.app.currentSourceCharacter) {
                     p.addButton(null, "Apply retargeting", () => {
                         this.app.applyRetargeting();
+                        this.refresh();
                     }, { width: "200px"})
                 }
                 
@@ -196,10 +197,16 @@ class Gui {
                 panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
                     character.model.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addVector3("Scale", [character.model.scale.x, character.model.scale.y, character.model.scale.z], (value, event) => {
-                    character.model.scale.set(value[0], value[1], value[2]);
+                panel.addVector3("Rotation", [character.model.rotation.x, character.model.rotation.y, character.model.rotation.z], (value, event) => {
+                    character.model.rotation.set(value[0], value[1], value[2]);
+                }, {step:0.01});
+                panel.addNumber("Scale", character.model.scale.x, (value, event) => {
+                    character.model.scale.set(value, value, value);
                 }, {step:0.01});               
             }
+            panel.addButton(null, "Bind pose", () => {
+                this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.pose();
+            });
         }
         this.createKeyframePanel(panel);
 
@@ -278,24 +285,30 @@ class Gui {
             });
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
-        if(this.app.currentSourceCharacter && this.app.currentCharacter) {
+        if(this.app.currentSourceCharacter && this.app.currentCharacter && this.app.retargeting) {
 
-            panel.addButton(null, "Edit mapping", () => {
+            panel.addButton(null, "Edit bones mapping", () => {
                 this.showBoneMapping();
             }, {width: "40px", icon: "fa-solid fa-bone"});
         }
         panel.endLine();
-
+        
         if(this.app.currentCharacter) {
             let character = this.app.loadedCharacters[this.app.currentCharacter];
             if(character.model) {
                 panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
                     character.model.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addVector3("Scale", [character.model.scale.x, character.model.scale.y, character.model.scale.z], (value, event) => {
-                    character.model.scale.set(value[0], value[1], value[2]);
-                }, {step:0.01});               
+                panel.addVector3("Rotation", [character.model.rotation.x, character.model.rotation.y, character.model.rotation.z], (value, event) => {
+                    character.model.rotation.set(value[0], value[1], value[2]);
+                }, {step:0.01});
+                panel.addNumber("Scale", character.model.scale.x, (value, event) => {
+                    character.model.scale.set(value, value, value);
+                }, {step:0.01});                             
             }
+            panel.addButton(null, "Bind pose", () => {
+                this.app.loadedCharacters[this.app.currentCharacter].skeleton.pose();
+            });
         }
         panel.merge();
     }

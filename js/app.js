@@ -163,7 +163,8 @@ class App {
         }
         character.model.position.x = 1;
         this.onChangeAvatar(avatarName);
-       
+        this.retargeting = null;
+
         if(this.currentSourceCharacter) {
                  }
         if ( this.gui ){ this.gui.refresh(); }
@@ -205,7 +206,8 @@ class App {
         //     const target = this.loadedCharacters[this.currentCharacter];
         //     this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
         // }
-              
+        this.retargeting = null;
+     
         if ( this.gui ){ this.gui.refresh(); }
     }
 

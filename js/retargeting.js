@@ -237,7 +237,7 @@ class AnimationRetargeting {
         //------------------------------------ LOOK AT Z-AXIS ------------------------------------//
         // Check if the skeleton is oriented in the +Z using the plane fromed by leftArm and spine
         let leftArmBase = skeleton.getBoneByName(leftArmBaseName);
-        let leftArmEnd = skeleton.getBoneByName(leftArmEndName);
+        let leftArmEnd = leftArmBase.children[0];
         
         let leftArmBasePos = leftArmBase.getWorldPosition(new THREE.Vector3());
         let leftArmEndPos = leftArmEnd.getWorldPosition(new THREE.Vector3());        
@@ -269,6 +269,8 @@ class AnimationRetargeting {
             // Get spine bone global rotation 
             let spineBaseRot = spineBase.getWorldQuaternion(new THREE.Quaternion());
             // Apply computed rotation to the spine bone global rotation
+            rot = rot.setFromUnitVectors(axis, zAxis)
+
             spineBaseRot = spineBaseRot.multiply(rot);
             
             if (spineBase.parent) {
