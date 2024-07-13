@@ -104,7 +104,7 @@ class App {
         if(urlParams.has('controls')) {
             showControls = !(urlParams.get('controls') === "false");
         }
-        let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+        let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
         this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", ()=>{
             this.changeSourceAvatar( "Woman" );                         
         });
@@ -165,9 +165,7 @@ class App {
         this.onChangeAvatar(avatarName);
        
         if(this.currentSourceCharacter) {
-            const source = this.loadedCharacters[this.currentSourceCharacter];
-            this.retargeting = new AnimationRetargeting(source.skeleton, character.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-        }
+                 }
         if ( this.gui ){ this.gui.refresh(); }
     }
 
@@ -203,10 +201,10 @@ class App {
         }
         this.currentAnimation = "";
         this.bindedAnimations = {};
-        if(this.currentCharacter) {
-            const target = this.loadedCharacters[this.currentCharacter];
-            this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-        }
+        // if(this.currentCharacter) {
+        //     const target = this.loadedCharacters[this.currentCharacter];
+        //     this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
+        // }
               
         if ( this.gui ){ this.gui.refresh(); }
     }
@@ -264,12 +262,10 @@ class App {
                         object.castShadow = true;
                         object.receiveShadow = true;
                         if (object.name == "Eyelashes") // eva
-                        object.castShadow = false;
+                            object.castShadow = false;
                         if(object.material.map) 
-                        object.material.map.anisotropy = 16;
-                } else if (object.isBone) {
-                    object.scale.set(1.0, 1.0, 1.0);
-                    }
+                            object.material.map.anisotropy = 16;
+                }
                 } );
     
             }
@@ -283,25 +279,25 @@ class App {
 
             model.name = avatarName;
             let animations = glb.animations;
-            let bindSkeleton = skeleton.clone();
-            bindSkeleton.bones = [];
-            for(let i = 0; i < skeleton.bones.length; i++) {
-                bindSkeleton.bones.push(skeleton.bones[i].clone());
-            }
-            bindSkeleton.pose();
-            let restSkeleton = skeleton.clone();
-            restSkeleton.bones = [];
-            for(let i = 0; i < skeleton.bones.length; i++) {
-                restSkeleton.bones.push(skeleton.bones[i].clone());
-            }
+            // let bindSkeleton = skeleton.clone();
+            // bindSkeleton.bones = [];
+            // for(let i = 0; i < skeleton.bones.length; i++) {
+            //     bindSkeleton.bones.push(skeleton.bones[i].clone());
+            // }
+            // bindSkeleton.pose();
+            // let restSkeleton = skeleton.clone();
+            // restSkeleton.bones = [];
+            // for(let i = 0; i < skeleton.bones.length; i++) {
+            //     restSkeleton.bones.push(skeleton.bones[i].clone());
+            // }
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
-                model, skeleton, restSkeleton: skeleton.clone(), bindSkeleton, animations, skeletonHelper
+                model, skeleton, animations, skeletonHelper
             }
             
             this.onLoadAvatar(model, skeleton);
             if (callback) {
-                callback();
+                callback(animations);
             }
         
         });
@@ -361,6 +357,7 @@ class App {
             this.sourceMixer.uncacheClip(this.loadedAnimations[this.currentAnimation].animation);
         }
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
+        this.sourceMixer.update(0);
         this.currentAnimation = animationName;
         this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
     }
@@ -443,7 +440,7 @@ class App {
         while(mixer._actions.length){
             mixer.uncacheClip(mixer._actions[0]._clip); // removes action
         }
-        currentCharacter.skeleton.pose(); // for some reason, mixer.stopAllAction makes bone.position and bone.quaternions undefined. Ensure they have some values
+        //currentCharacter.skeleton.pose(); // for some reason, mixer.stopAllAction makes bone.position and bone.quaternions undefined. Ensure they have some values
 
         // if not yet binded, create it. Otherwise just change to the existing animation
         if ( !this.bindedAnimations[animationName] || !this.bindedAnimations[animationName][currentCharacter.name] ) {
@@ -512,7 +509,11 @@ class App {
     }
     
     applyRetargeting() {
-        this.retargeting.retargetPose();
+        const source = this.loadedCharacters[this.currentSourceCharacter];
+        const target = this.loadedCharacters[this.currentCharacter];
+        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
+   
+        //this.retargeting.retargetPose();
     }
 
 }

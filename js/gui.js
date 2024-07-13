@@ -9,13 +9,12 @@ class Gui {
         
         // available model models paths - [model, rotation]
         this.avatarOptions = {
-            "Eva": ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva/Eva.png'],
-            "EvaLow": ['https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Low/Eva_Low.png'],
-            "ReadyEva": ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.png'],
-            "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png'],
-            "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png'],
-            "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png'],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.gltf', 0, 'https://webglstudio.org/3Dcharacters/Woman/Woman.png']
+            "Eva": ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva/Eva.png', false],
+            "ReadyEva": ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.png', false],
+            "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
+            "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png', false],
+            "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png', false],
+            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, 'https://webglstudio.org/3Dcharacters/Woman/Woman.png', true]
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
@@ -44,12 +43,16 @@ class Gui {
             this.panel = p;
            
             let avatars = [];
+            let avatarsWithAnimations = [];
             for(let avatar in this.avatarOptions) {
-                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"});
+                if(this.avatarOptions[avatar][3]) {
+                    avatarsWithAnimations.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"})
+                }                                   
+                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"});                
             }
             this.panel.refresh = () =>{
                 this.panel.clear();
-                this.createSourcePanel(this.panel, avatars);
+                this.createSourcePanel(this.panel, avatarsWithAnimations);
 
                 this.createTargetPanel(this.panel, avatars);
                 // if(this.app.currentSourceCharacter) {
@@ -84,12 +87,12 @@ class Gui {
 
     }
 
-    createSourcePanel(panel, avatars) {
+    createSourcePanel(panel, avatarsWithAnimations) {
         // SOURCE AVATAR/ANIMATION
         panel.branch("Source", {icon: "fa-solid fa-child-reaching"});
 
         panel.sameLine();
-        panel.addDropdown("Source", avatars, this.app.currentSourceCharacter, (value, event) => {
+        panel.addDropdown("Source", avatarsWithAnimations, this.app.currentSourceCharacter, (value, event) => {
             
             // upload model
             if (value == "Upload Animation or Avatar") {
@@ -102,16 +105,22 @@ class Gui {
                         let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                         
                         if( extension == "glb" || extension == "gltf" ) {
-                            this.app.loadAvatar(modelFilePath, modelRotation, value, () => { 
-                                avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.loadAvatar(modelFilePath, modelRotation, value, (animations) => { 
                                 this.app.changeSourceAvatar(value);
+                                if(!animations.length) {
+                                    LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
+                                }
+                                avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
                                 document.getElementById("loading").style.display = "none";
                             } );
                         }
                         else if( extension == "bvh" || extension == "bvhe") {
-                            this.app.loadAnimation(modelFilePath, modelRotation, value, () => {
-                                avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            this.app.loadAnimation(modelFilePath, modelRotation, value, (animations) => {
                                 this.app.changeSourceAvatar(value);
+                                if(!animations.length) {
+                                    LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
+                                }
+                                avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
                                 document.getElementById("loading").style.display = "none";
                             })
                         }
@@ -130,9 +139,11 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, (animations)=>{ 
                         this.app.changeSourceAvatar(value);
-                        // TO  DO: load animations if it has someone
+                        if(!animations.length) {
+                            LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
+                        }
                         document.getElementById("loading").style.display = "none";
                     } );
                     return;
@@ -150,16 +161,22 @@ class Gui {
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                     if( extension == "glb" || extension == "gltf" ) {
-                        this.app.loadAvatar(modelFilePath, modelRotation, value, () => { 
-                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, (animations) => { 
                             this.app.changeSourceAvatar(value);
+                            avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
+                            if(!animations.length) {
+                                LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
+                            }
                             document.getElementById("loading").style.display = "none";
                         } );
                     }
                     else if( extension == "bvh" || extension == "bvhe") {
-                        this.app.loadAnimation(modelFilePath, modelRotation, value, () => {
-                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        this.app.loadAnimation(modelFilePath, modelRotation, value, (animations) => {
                             this.app.changeSourceAvatar(value);
+                            if(!animations.length) {
+                                LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
+                            }
+                            avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
                             document.getElementById("loading").style.display = "none";
                         })
                     }

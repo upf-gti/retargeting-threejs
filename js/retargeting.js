@@ -289,11 +289,15 @@ class AnimationRetargeting {
         // Check if left leg follow the -Y axis
         let up = new THREE.Vector3(0, -1, 0);
         const leftLegBase = skeleton.getBoneByName(leftLegBaseName);
-        this.alignBoneToAxis(leftLegBase, up);
+        const leftLegEnd = skeleton.getBoneByName(leftLegEndName);
+
+        this.alignBoneToAxis(leftLegBase, up, leftLegEnd);
         
         // Check if right leg follow the -Y axis
         const rightLegBase = skeleton.getBoneByName(rightLegBaseName);
-        this.alignBoneToAxis(rightLegBase, up);
+        const rightLegEnd = skeleton.getBoneByName(rightLegEndName);
+
+        this.alignBoneToAxis(rightLegBase, up, rightLegEnd);
 
         //------------------------------------ ARMS COMPLETLY EXTENDED AND ALIGNED TO X-AXIS ------------------------------------//
         //LEFT
@@ -386,11 +390,11 @@ class AnimationRetargeting {
      * @param {THREE.Bone} bone 
      * @param {THREE.Vector3} axis 
      */
-    alignBoneToAxis(bone, axis) {
+    alignBoneToAxis(bone, axis, children) {
         bone.updateMatrixWorld(true, true);
         // Get global positions
         const bonePos = bone.getWorldPosition(new THREE.Vector3());
-        const childPos = bone.children[0].getWorldPosition(new THREE.Vector3());        
+        const childPos = children ?? bone.children[0].getWorldPosition(new THREE.Vector3());        
         
         // Compute the unitary direction of the bone from its position and its child position
         let dir = new THREE.Vector3();
