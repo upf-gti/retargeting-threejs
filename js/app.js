@@ -527,6 +527,7 @@ class App {
         this.loadedCharacters[characterName].skeleton.pose();
         let parent = this.loadedCharacters[characterName].skeleton.bones[0].parent;
         if(parent && !parent.isBone) {
+            parent.quaternion.set(0,0,0,1);
             let bone = this.loadedCharacters[characterName].skeleton.bones[0];
             bone.matrix.copy( parent.matrixWorld ).invert();
             bone.matrix.multiply( bone.matrixWorld );
@@ -545,7 +546,7 @@ class App {
             this.mixer.update(0);
         }
         else {
-             this.retargeting.retargetPose();
+            //  this.retargeting.retargetPose();
         }
     }
 
