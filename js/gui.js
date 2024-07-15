@@ -52,18 +52,9 @@ class Gui {
             }
             this.panel.refresh = () =>{
                 this.panel.clear();
+                this.createTargetPanel(this.panel, avatars);
                 this.createSourcePanel(this.panel, avatarsWithAnimations);
 
-                this.createTargetPanel(this.panel, avatars);
-                // if(this.app.currentSourceCharacter) {
-
-                //     p.addButton(null, "Apply original bind position", () => {
-                //         let character = this.app.loadedCharacters[this.app.currentCharacter];
-                //         character.skeleton = character.bindSkeleton;
-                //         character.skeleton.update();
-                //     })
-                // }                                
-                
                 p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
                     this.app.changeSkeletonsVisibility(v);
                 })
@@ -363,20 +354,23 @@ class Gui {
         let name, model, extension;
         let rotation = 0;
     
-        let text = "Avatar"; 
+        let title = "Avatar"; 
+        let text = "Load a .gltf or a .glb file."
         if(isSource) {
-            text = "Animation/Avatar ";
+            title = "Animation/Avatar ";
+            text = "Load a .bvh, .bvhe, .gltf or .glb file."
         }
 
-        this.avatarDialog = new LX.Dialog("Upload " + text , panel => {
+        this.avatarDialog = new LX.Dialog("Upload " + title , panel => {
             
-            let nameWidget = panel.addText("Name Your " + text, name, (v, e) => {
+            panel.addText(null, text, null, {disabled: true});
+            let nameWidget = panel.addText("Name Your " + title, name, (v, e) => {
                 if (this.avatarOptions[v]) LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]});
                 name = v;
             });
 
-            let avatarFile = panel.addFile(text + " File", (v, e) => {
-                let files = panel.widgets[text + " File"].domEl.children[1].files;
+            let avatarFile = panel.addFile(title + " File", (v, e) => {
+                let files = panel.widgets[title + " File"].domEl.children[1].files;
                 if(!files.length) {
                     return;
                 }
@@ -450,7 +444,7 @@ class Gui {
                 }
             })
 
-        }, { size: ["40%"], closable: true, onclose: (root) => { root.remove(); this.gui.setValue("Avatar File", this.app.currentCharacter)} });
+        }, { size: ["40%"], closable: true, onclose: (root) => { root.remove(); if(this.gui) this.gui.setValue("Avatar File", this.app.currentCharacter)} });
 
         return name;
     }

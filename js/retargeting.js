@@ -302,13 +302,7 @@ class AnimationRetargeting {
 
         let yAxis = new THREE.Vector3(0, 1, 0);
         this.alignBoneToAxis(spineBase, yAxis);
-
-        const length = 2;
-        const hex = 0xffff00;
-
-        const arrowHelper = new THREE.ArrowHelper( yAxis, hipsPos, length, hex );
-        window.app.scene.add( arrowHelper );
-
+        
         //------------------------------------ LEGS ALIGNED TO Y-AXIS ------------------------------------//
         // Check if left leg is extended
         let leftLegEnd = skeleton.getBoneByName(leftLegEndName); // foot
