@@ -204,16 +204,9 @@ class Gui {
                     root.scale.set(value, value, value);
                 }, {step:0.01});                             
             }
-            panel.addButton(null, "Bind pose", () => {
-                this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.pose();
-                let parent = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0].parent;
-                if(parent && !parent.isBone) {
-                    let bone = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0];
-                    bone.matrix.copy( parent.matrixWorld ).invert();
-					bone.matrix.multiply( bone.matrixWorld );
-                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-                    bone.updateWorldMatrix(false, true);
-                }
+            panel.addButton(null, "Apply original bind pose", () => {
+                
+                this.app.applyOriginalBindPose(this.app.currentSourceCharacter);
                 this.refresh();
             });
         }
@@ -320,16 +313,9 @@ class Gui {
                     root.scale.set(value, value, value);
                 }, {step:0.01});                             
             }
-            panel.addButton(null, "Bind pose", () => {                
-                this.app.loadedCharacters[this.app.currentCharacter].skeleton.pose();
-                let parent = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0].parent;
-                if(parent && !parent.isBone) {
-                    let bone = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0];
-                    bone.matrix.copy( parent.matrixWorld ).invert();
-					bone.matrix.multiply( bone.matrixWorld );
-                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-                    bone.updateWorldMatrix(false, true);
-                }
+            panel.addButton(null, "Apply original bind pose", () => {                
+                this.app.applyOriginalBindPose(this.app.currentCharacter);
+
                 this.refresh();
             });
         }
@@ -339,7 +325,12 @@ class Gui {
     createKeyframePanel(panel) {
         panel.addTitle("Animation", {icon: "fa-solid fa-hands-asl-interpreting"});
         panel.sameLine();
-        panel.addDropdown("Animation", Object.keys(this.app.loadedAnimations), this.app.currentAnimation, (v) => {
+        let animations = [];
+        for(let anim in this.app.loadedCharacters[this.app.currentSourceCharacter].animations) {
+           
+            animations.push(this.app.loadedCharacters[this.app.currentSourceCharacter].animations[anim].name);            
+        }
+        panel.addDropdown("Animation", animations, this.app.currentAnimation, (v) => {
             this.app.onChangeAnimation(v);
         });
 

@@ -323,6 +323,9 @@ class App {
         if(this.playing && this.mixer) {
             this.mixer.setTime(0);                      
         }
+        if(this.playing && this.sourceMixer) {
+            this.sourceMixer.setTime(0);                      
+        }
     }
 
     changeSkeletonsVisibility(visibility) {
@@ -518,13 +521,28 @@ class App {
         }
         clip.tracks = clip.tracks.concat(newTracks);
     }
-    
+
+    applyOriginalBindPose(characterName) {
+
+        this.loadedCharacters[characterName].skeleton.pose();
+        let parent = this.loadedCharacters[characterName].skeleton.bones[0].parent;
+        if(parent && !parent.isBone) {
+            let bone = this.loadedCharacters[characterName].skeleton.bones[0];
+            bone.matrix.copy( parent.matrixWorld ).invert();
+            bone.matrix.multiply( bone.matrixWorld );
+            bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
+            bone.updateWorldMatrix(false, true);
+        }        
+    }
+
     applyRetargeting() {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
         this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+            this.sourceMixer.update(0);
+            this.mixer.update(0);
         }
         else {
              this.retargeting.retargetPose();
