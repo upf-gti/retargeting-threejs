@@ -14,7 +14,7 @@ class Gui {
             "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
             "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png', false],
             "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png', false],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, 'https://webglstudio.org/3Dcharacters/Woman/Woman.png', true]
+            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true]
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
@@ -46,9 +46,9 @@ class Gui {
             let avatarsWithAnimations = [];
             for(let avatar in this.avatarOptions) {
                 if(this.avatarOptions[avatar][3]) {
-                    avatarsWithAnimations.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"})
+                    avatarsWithAnimations.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""})
                 }                                   
-                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? "data/imgs/monster.png"});                
+                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""});                
             }
             this.panel.refresh = () =>{
                 this.panel.clear();
@@ -111,8 +111,9 @@ class Gui {
                                 if(!animations.length) {
                                     LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                                 }
-                                avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
+                                avatarsWithAnimations.push({ value: value, src: ""});
                                 document.getElementById("loading").style.display = "none";
+                                this.refresh();
                             } );
                         }
                         else if( extension == "bvh" || extension == "bvhe") {
@@ -121,8 +122,9 @@ class Gui {
                                 if(!animations.length) {
                                     LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                                 }
-                                avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
+                                avatarsWithAnimations.push({ value: value, src: ""});
                                 document.getElementById("loading").style.display = "none";
+                                this.refresh();
                             })
                         }
                         return;
@@ -130,6 +132,7 @@ class Gui {
 
                     // use controller if it has been already loaded in the past
                     this.app.changeSourceAvatar(value);
+                    this.refresh();
                     // TO  DO: load animations if it has someone
 
                 }, true);
@@ -146,11 +149,13 @@ class Gui {
                             LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                         }
                         document.getElementById("loading").style.display = "none";
+                        this.refresh();
                     } );
                     return;
                 } 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
+                this.refresh();
             }
         });
 
@@ -164,11 +169,12 @@ class Gui {
                     if( extension == "glb" || extension == "gltf" ) {
                         this.app.loadAvatar(modelFilePath, modelRotation, value, (animations) => { 
                             this.app.changeSourceAvatar(value);
-                            avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
+                            avatarsWithAnimations.push({ value: value, src: ""});
                             if(!animations.length) {
                                 LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                             }
                             document.getElementById("loading").style.display = "none";
+                            this.refresh();
                         } );
                     }
                     else if( extension == "bvh" || extension == "bvhe") {
@@ -177,8 +183,9 @@ class Gui {
                             if(!animations.length) {
                                 LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                             }
-                            avatarsWithAnimations.push({ value: value, src: "data/imgs/monster.png"});
+                            avatarsWithAnimations.push({ value: value, src: ""});
                             document.getElementById("loading").style.display = "none";
+                            this.refresh();
                         })
                     }
                     return;
@@ -186,6 +193,7 @@ class Gui {
 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
+                this.refresh();
 
             }, true);
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
@@ -193,19 +201,29 @@ class Gui {
         panel.endLine();
         if(this.app.currentSourceCharacter) {
             let character = this.app.loadedCharacters[this.app.currentSourceCharacter];
-            if(character.model) {
-                panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
-                    character.model.position.set(value[0], value[1], value[2]);
+           if(character.skeletonHelper) {
+                let root = character.skeletonHelper.bones[0].parent ?? character.model;
+                panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
+                    root.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addVector3("Rotation", [character.model.rotation.x, character.model.rotation.y, character.model.rotation.z], (value, event) => {
-                    character.model.rotation.set(value[0], value[1], value[2]);
+                panel.addVector3("Rotation", [root.rotation.x, root.rotation.y, root.rotation.z], (value, event) => {
+                    root.rotation.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addNumber("Scale", character.model.scale.x, (value, event) => {
-                    character.model.scale.set(value, value, value);
-                }, {step:0.01});               
+                panel.addNumber("Scale", root.scale.x, (value, event) => {
+                    root.scale.set(value, value, value);
+                }, {step:0.01});                             
             }
             panel.addButton(null, "Bind pose", () => {
                 this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.pose();
+                let parent = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0].parent;
+                if(parent && !parent.isBone) {
+                    let bone = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0];
+                    bone.matrix.copy( parent.matrixWorld ).invert();
+					bone.matrix.multiply( bone.matrixWorld );
+                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
+                    bone.updateWorldMatrix(false, true);
+                }
+                this.refresh();
             });
         }
         this.createKeyframePanel(panel);
@@ -229,15 +247,17 @@ class Gui {
                         let modelFilePath = this.avatarOptions[value][0]; 
                         let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                         this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
-                            avatars.push({ value: value, src: "data/imgs/monster.png"});
+                            avatars.push({ value: value, src: ""});
                             this.app.changeAvatar(value);
                             document.getElementById("loading").style.display = "none";
+                            this.refresh();
                         } );
                         return;
                     } 
 
                     // use controller if it has been already loaded in the past
                     this.app.changeAvatar(value);
+                    this.refresh();
                     // TO  DO: load animations if it has someone
 
                 });
@@ -249,16 +269,18 @@ class Gui {
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                     this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
-                        avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        avatars.push({ value: value, src: ""});
                         this.app.changeAvatar(value);
                         // TO  DO: load animations if it has someone
                         document.getElementById("loading").style.display = "none";
+                        this.refresh();
                     } );
                     return;
                 } 
 
                 // use controller if it has been already loaded in the past
                 this.app.changeAvatar(value);
+                this.refresh();
             }
         });
 
@@ -270,18 +292,18 @@ class Gui {
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                     this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
-                        avatars.push({ value: value, src: "data/imgs/monster.png"});
+                        avatars.push({ value: value, src: ""});
                         this.app.changeAvatar(value);
                         document.getElementById("loading").style.display = "none";
                         // TO  DO: load animations if it has someone
-
+                        this.refresh();
                     } );
                     return;
                 } 
 
                 // use controller if it has been already loaded in the past
                 this.app.changeAvatar(value);
-
+                this.refresh();
             });
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
@@ -295,19 +317,29 @@ class Gui {
         
         if(this.app.currentCharacter) {
             let character = this.app.loadedCharacters[this.app.currentCharacter];
-            if(character.model) {
-                panel.addVector3("Position", [character.model.position.x, character.model.position.y, character.model.position.z], (value, event) => {
-                    character.model.position.set(value[0], value[1], value[2]);
+            if(character.skeletonHelper) {
+                let root = character.skeletonHelper.bones[0].parent ?? character.model;
+                panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
+                    root.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addVector3("Rotation", [character.model.rotation.x, character.model.rotation.y, character.model.rotation.z], (value, event) => {
-                    character.model.rotation.set(value[0], value[1], value[2]);
+                panel.addVector3("Rotation", [root.rotation.x, root.rotation.y, root.rotation.z], (value, event) => {
+                    root.rotation.set(value[0], value[1], value[2]);
                 }, {step:0.01});
-                panel.addNumber("Scale", character.model.scale.x, (value, event) => {
-                    character.model.scale.set(value, value, value);
+                panel.addNumber("Scale", root.scale.x, (value, event) => {
+                    root.scale.set(value, value, value);
                 }, {step:0.01});                             
             }
-            panel.addButton(null, "Bind pose", () => {
+            panel.addButton(null, "Bind pose", () => {                
                 this.app.loadedCharacters[this.app.currentCharacter].skeleton.pose();
+                let parent = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0].parent;
+                if(parent && !parent.isBone) {
+                    let bone = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0];
+                    bone.matrix.copy( parent.matrixWorld ).invert();
+					bone.matrix.multiply( bone.matrixWorld );
+                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
+                    bone.updateWorldMatrix(false, true);
+                }
+                this.refresh();
             });
         }
         panel.merge();
@@ -379,7 +411,7 @@ class Gui {
             panel.addButton(null, "Upload", () => {
                 if (name && model) {
                     if (this.avatarOptions[name]) { LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]}); return; }
-                    this.avatarOptions[name] = [model, rotation, "data/imgs/monster.png"];
+                    this.avatarOptions[name] = [model, rotation, "icon"];
                     
                     panel.clear();
                     this.avatarDialog.root.remove();

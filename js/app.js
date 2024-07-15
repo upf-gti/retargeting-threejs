@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { BVHLoader } from './extendedBVHLoader.js';
 
 import { Gui } from './gui.js'
-import { AnimationRetargeting, forceBindPoseQuats } from './retargeting.js'
+import { AnimationRetargeting } from './retargeting.js'
 
 class App {
     constructor() {
@@ -85,6 +85,9 @@ class App {
         ground.receiveShadow = true;
         this.scene.add( ground );
 
+        const grid = new THREE.GridHelper(300, 300, 0x101010, 0x555555 );
+        grid.name = "Grid";
+        this.scene.add(grid);
        
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 1000);
         this.camera.position.set(0,1.2,2);
@@ -257,7 +260,7 @@ class App {
                 model.traverse( (object) => {
                     if ( object.isMesh || object.isSkinnedMesh ) {
                         if (object.skeleton){
-                            skeleton = object.skeleton; 
+                            skeleton = object.skeleton;                         
                         }
                         object.material.side = THREE.FrontSide;
                         object.frustumCulled = false;
@@ -267,7 +270,11 @@ class App {
                             object.castShadow = false;
                         if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                }
+                    }
+                    // else if (object.isBone) {
+                    //     object.scale.set(1.0, 1.0, 1.0);
+                    // }
+                    
                 } );
     
             }
@@ -308,11 +315,7 @@ class App {
     loadAnimation( modelFilePath, modelRotation, avatarName, callback = null ) {
         
         const data = this.loaderBVH.parseExtended(modelFilePath);
-        this.loadBVHAnimation( avatarName, data );
-
-        if(callback) {
-            callback();
-        }        
+        this.loadBVHAnimation( avatarName, data, callback );     
     } 
 
     changePlayState(state = !this.playing) {
@@ -372,7 +375,7 @@ class App {
         this.renderer.setSize( window.innerWidth, window.innerHeight );
     }
     // load animation from bvhe file
-    loadBVHAnimation(name, animationData) { // TO DO: Refactor params of loadAnimation...()
+    loadBVHAnimation(name, animationData, callback) { // TO DO: Refactor params of loadAnimation...()
 
         let skeleton = null;
         let bodyAnimation = null;
@@ -415,6 +418,9 @@ class App {
             model: skeletonHelper, skeleton, animations: [this.loadedAnimations[name].animation]
         }
         this.onLoadAvatar(skeletonHelper, skeleton);
+        if (callback) {
+            callback(this.loadedCharacters[name].animations);
+        }
     }
 
     /**
@@ -460,8 +466,11 @@ class App {
                     tracks[tracks.length - 1].name = tracks[tracks.length - 1].name.replace( /[\[\]`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "").replace(".bones", "");
                 }
 
-                bodyAnimation.tracks = tracks;            
-                bodyAnimation = this.retargeting.retargetAnimation(bodyAnimation);
+                bodyAnimation.tracks = tracks;  
+                if( this.retargeting )
+                {
+                    bodyAnimation = this.retargeting.retargetAnimation(bodyAnimation);
+                }
                 
                 this.validateAnimationClip(bodyAnimation);
 
@@ -513,9 +522,13 @@ class App {
     applyRetargeting() {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
-        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-   
-        //this.retargeting.retargetPose();
+        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
+        if(this.currentAnimation) {
+            this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+        }
+        else {
+             this.retargeting.retargetPose();
+        }
     }
 
 }
