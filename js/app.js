@@ -287,18 +287,9 @@ class App {
             // model.add( new THREE.SkeletonHelper( model ) );
 
             model.name = avatarName;
+            
             let animations = glb.animations;
-            // let bindSkeleton = skeleton.clone();
-            // bindSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     bindSkeleton.bones.push(skeleton.bones[i].clone());
-            // }
-            // bindSkeleton.pose();
-            // let restSkeleton = skeleton.clone();
-            // restSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     restSkeleton.bones.push(skeleton.bones[i].clone());
-            // }
+         
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
                 model, skeleton, animations, skeletonHelper
@@ -365,9 +356,9 @@ class App {
             this.sourceMixer.uncacheClip(this.loadedAnimations[this.currentAnimation].animation);
         }
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
-        this.sourceMixer.update(0);
+        this.sourceMixer.setTime(0);
         this.currentAnimation = animationName;
-        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
     onWindowResize() {
@@ -477,7 +468,7 @@ class App {
                 
                 this.validateAnimationClip(bodyAnimation);
 
-                bodyAnimation.name = "bodyAnimation";   // mixer
+                bodyAnimation.name = animationName;   // mixer
             }                
             
             if(!this.bindedAnimations[animationName]) {
@@ -525,28 +516,31 @@ class App {
     applyOriginalBindPose(characterName) {
 
         this.loadedCharacters[characterName].skeleton.pose();
-        let parent = this.loadedCharacters[characterName].skeleton.bones[0].parent;
-        if(parent && !parent.isBone) {
-            parent.quaternion.set(0,0,0,1);
-            let bone = this.loadedCharacters[characterName].skeleton.bones[0];
-            bone.matrix.copy( parent.matrixWorld ).invert();
-            bone.matrix.multiply( bone.matrixWorld );
-            bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-            bone.updateWorldMatrix(false, true);
-        }        
+        // let parent = this.loadedCharacters[characterName].skeleton.bones[0].parent;
+        // if(parent && !parent.isBone) {
+        //     parent.quaternion.set(0,0,0,1);
+        //     let bone = this.loadedCharacters[characterName].skeleton.bones[0];
+        //     bone.matrix.copy( parent.matrixWorld ).invert();
+        //     bone.matrix.multiply( bone.matrixWorld );
+        //     bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
+        //     bone.updateWorldMatrix(false, true);
+        // }        
     }
 
-    applyRetargeting() {
+    applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true) {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
-        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
+        
+        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms, trgEmbedWorldTransforms } ); // TO DO: change trgUseCurrentPose param
+        
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
-            this.sourceMixer.update(0);
-            this.mixer.update(0);
+            this.sourceMixer.setTime(0.01);
+            this.sourceMixer.setTime(0.0);
+            this.mixer.setTime(0);
         }
         else {
-            //  this.retargeting.retargetPose();
+            this.retargeting.retargetPose();
         }
     }
 

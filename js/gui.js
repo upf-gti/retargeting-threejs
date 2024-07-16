@@ -14,7 +14,8 @@ class Gui {
             "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
             "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png', false],
             "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png', false],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true]
+            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true],
+            "Dancer": ['https://webglstudio.org/3Dcharacters/Dancer/Dancer.glb', 0, "", true]
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
@@ -29,6 +30,9 @@ class Gui {
 			this.app.loadFiles(e.dataTransfer.files, () => this.gui.refresh());      
         };    
         this.panel = null;
+
+        this.srcItemSelected = "";
+        this.trgItemSelected = "";
 
         this.createPanel();
     }
@@ -55,16 +59,26 @@ class Gui {
                 this.createTargetPanel(this.panel, avatars);
                 this.createSourcePanel(this.panel, avatarsWithAnimations);
 
+                
+                p.branch("Retargeting")
                 p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
                     this.app.changeSkeletonsVisibility(v);
                 })
-
+                p.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
+                    this.app.srcEmbeddedTransforms = v;
+                })
+                
+                p.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
+                    this.app.trgEmbeddedTransforms = v;
+                })
+                
                 if(this.app.currentSourceCharacter) {
                     p.addButton(null, "Apply retargeting", () => {
-                        this.app.applyRetargeting();
+                        this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
                         this.refresh();
                     }, { width: "200px"})
                 }
+                p.merge();
                 
             }
 
@@ -192,8 +206,10 @@ class Gui {
         panel.endLine();
         if(this.app.currentSourceCharacter) {
             let character = this.app.loadedCharacters[this.app.currentSourceCharacter];
-           if(character.skeletonHelper) {
-                let root = character.skeletonHelper.bones[0].parent ?? character.model;
+            this.createSkeletonPanel(panel, character.skeleton, "source");            
+            if(this.srcItemSelected) {
+                let root = character.model.getObjectByName(this.srcItemSelected);
+                //let root = character.skeletonHelper ? character.skeletonHelper.bones[0].parent : character.model;
                 panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
                     root.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
@@ -204,13 +220,15 @@ class Gui {
                     root.scale.set(value, value, value);
                 }, {step:0.01});                             
             }
+            
+
             panel.addButton(null, "Apply original bind pose", () => {
                 
                 this.app.applyOriginalBindPose(this.app.currentSourceCharacter);
                 this.refresh();
             });
         }
-        this.createKeyframePanel(panel);
+        this.createAnimationPanel(panel);
 
         panel.merge();
     }
@@ -301,8 +319,9 @@ class Gui {
         
         if(this.app.currentCharacter) {
             let character = this.app.loadedCharacters[this.app.currentCharacter];
-            if(character.skeletonHelper) {
-                let root = character.skeletonHelper.bones[0].parent ?? character.model;
+            this.createSkeletonPanel(panel, character.skeleton, "target");
+            if(this.trgItemSelected) {
+                let root = character.model.getObjectByName(this.trgItemSelected);
                 panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
                     root.position.set(value[0], value[1], value[2]);
                 }, {step:0.01});
@@ -312,7 +331,8 @@ class Gui {
                 panel.addNumber("Scale", root.scale.x, (value, event) => {
                     root.scale.set(value, value, value);
                 }, {step:0.01});                             
-            }
+            }            
+
             panel.addButton(null, "Apply original bind pose", () => {                
                 this.app.applyOriginalBindPose(this.app.currentCharacter);
 
@@ -322,7 +342,7 @@ class Gui {
         panel.merge();
     }
 
-    createKeyframePanel(panel) {
+    createAnimationPanel(panel) {
         panel.addTitle("Animation", {icon: "fa-solid fa-hands-asl-interpreting"});
         panel.sameLine();
         let animations = [];
@@ -339,6 +359,97 @@ class Gui {
             panel.refresh();
         }, { width: "40px"});
         panel.endLine(); 
+    }
+
+    createSkeletonPanel(panel, skeleton, type) {
+        const rootBone = skeleton.bones[0].parent ?? skeleton.bones[0];
+        const parent = rootBone.parent;
+        let itemSelected = type == 'source' ? this.srcItemSelected : this.trgItemSelected;
+        let sceneTree = { 
+            id: parent ? parent.name : rootBone.name,
+            selected: (parent ? parent.name : rootBone.nam) == itemSelected
+        };
+        let children = [];
+        if(parent) {
+            children.push( {
+                id: rootBone.name,
+                children: [],
+                closed: true,
+                selected: rootBone.name == itemSelected
+            })
+        }
+        const addChildren = (bone, array) => {
+            
+            for( let b of bone.children ) {
+                
+                if ( ! b.isBone ){ continue; }
+                let child = {
+                    id: b.name,
+                    children: [],
+                    icon: "fa-solid fa-bone",
+                    closed: true,
+                    selected: b.name == itemSelected
+                }
+                
+                array.push( child );
+                
+                addChildren(b, child.children);
+            }
+        };
+        
+        addChildren(rootBone, parent ? children[0].children : children);
+        
+        sceneTree['children'] = children;
+    
+        let tree = panel.addTree("Skeleton", sceneTree, { 
+            // filter: false,
+            id: type,
+            rename: false,
+            addDefault: true,
+            onevent: (event) => { 
+                console.log(event.string());
+    
+                switch(event.type) {
+                    case LX.TreeEvent.NODE_SELECTED: 
+                        if(event.multiple)
+                            console.log("Selected: ", event.node); 
+                        else {
+                            itemSelected = event.node.id;
+                            if(tree.options.id == 'source') {
+                                this.srcItemSelected = itemSelected
+                            }
+                            else {
+                                this.trgItemSelected = itemSelected
+                            }
+                            this.refresh() 
+                        }
+                        break;
+                    case LX.TreeEvent.NODE_DELETED: 
+                        if(event.multiple)
+                            console.log("Deleted: ", event.node); 
+                        else
+                            console.log(event.node.id + " deleted"); 
+                        break;
+                    case LX.TreeEvent.NODE_DBLCLICKED: 
+                        console.log(event.node.id + " dbl clicked"); 
+                        break;
+                    case LX.TreeEvent.NODE_CONTEXTMENU: 
+                        const m = event.panel;
+                        m.add( "Components/Transform");
+                        m.add( "Components/MeshRenderer");
+                        break;
+                    case LX.TreeEvent.NODE_DRAGGED: 
+                        console.log(event.node.id + " is now child of " + event.value.id); 
+                        break;
+                    case LX.TreeEvent.NODE_RENAMED:
+                        console.log(event.node.id + " is now called " + event.value); 
+                        break;
+                    case LX.TreeEvent.NODE_VISIBILITY:
+                        console.log(event.node.id + " visibility: " + event.value); 
+                        break;
+                }
+            }
+        });    
     }
 
     uploadAvatar(callback = null, isSource = false) {

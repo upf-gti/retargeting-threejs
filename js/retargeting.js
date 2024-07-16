@@ -77,14 +77,9 @@ class AnimationRetargeting {
      */
     cloneRawSkeleton( skeleton, poseMode, embedWorld = false ){
         let bones = skeleton.bones;
-        
         if(poseMode == AnimationRetargeting.BindPoseModes.TPOSE) {
-            // Force bind pose as T-pose
-            skeleton.pose();           
-            skeleton = this.applyTPose(skeleton, skeleton == this.trgSkeleton);
-            skeleton.update();
+            skeleton.pose();
         }
-
         let resultBones = new Array( bones.length );
         let parentIndices = new Int16Array( bones.length );
 
@@ -105,9 +100,17 @@ class AnimationRetargeting {
         // generate skeleton
         let resultSkeleton;
         switch(poseMode) {
-            case AnimationRetargeting.BindPoseModes.CURRENT: case AnimationRetargeting.BindPoseModes.TPOSE:
+            case AnimationRetargeting.BindPoseModes.CURRENT: 
                 resultSkeleton = new THREE.Skeleton( resultBones ); // will automatically compute the inverses from the matrixWorld of each bone               
                 
+                break;
+            case AnimationRetargeting.BindPoseModes.TPOSE:
+                 // Force bind pose as T-pose
+                resultSkeleton = new THREE.Skeleton( resultBones );
+                resultSkeleton.pose();           
+                resultSkeleton = this.applyTPose(resultSkeleton, skeleton == this.trgSkeleton);
+                resultSkeleton = new THREE.Skeleton( resultSkeleton.bones)
+                resultSkeleton.update();
                 break;
             default:
                 let boneInverses = new Array( skeleton.boneInverses.length );
@@ -249,7 +252,7 @@ class AnimationRetargeting {
             spineBaseName    = this.boneMap.nameMap[spineBaseName];
             spineEndName     = this.boneMap.nameMap[spineEndName];
         }
-
+        
         //------------------------------------ LOOK AT Z-AXIS ------------------------------------//
         // Check if the skeleton is oriented in the +Z using the plane fromed by leftArm and spine
         let leftBaseLeg = skeleton.getBoneByName(leftLegBaseName); // left up leg
@@ -279,12 +282,7 @@ class AnimationRetargeting {
         let zAxis = new THREE.Vector3(0, 0, 1);
         // Compute angle (rad) between perpendicular axis and z-axis
         let angle = (zAxis).angleTo(axis);
-        const origin = hipsPos;
-        const length = 5;
-        const hex = 0xffff00;
-
-        const arrowHelper = new THREE.ArrowHelper( axis, origin, length, hex );
-        window.app.scene.add( arrowHelper );
+       
         if(Math.abs(angle) > 0.001) {
             let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
 
@@ -522,7 +520,8 @@ class AnimationRetargeting {
      * Currently, only quaternions are retargeted 
      */
     retargetPose(){      
-        let m = this.boneMap.idxMap;
+        
+        let m = this.boneMap.idxMap;        
         for ( let i = 0; i < m.length; ++i ){
             if ( m[i] < 0 ){ continue; }
             this._retargetQuaternion( i, this.srcSkeleton.bones[ i ].quaternion, this.trgSkeleton.bones[ m[i] ].quaternion );
@@ -546,8 +545,8 @@ class AnimationRetargeting {
         let trgValues = new Float32Array( srcValues.length );
         if( boneIndex == 0 ) { // asume the first bone is the root
 
-            let trgBindPos = this.trgBindPose.bones[boneIndex].position//.getWorldPosition(new THREE.Vector3());
-            let srcBindPos = this.srcBindPose.bones[boneIndex].position//.getWorldPosition(new THREE.Vector3());
+            let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
+            let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             let srcLocalScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
             // Scale the position with the global scale of the bone (in case the bind pose it's scaled)
             srcBindPos.divide(srcLocalScale);
