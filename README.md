@@ -1,6 +1,6 @@
 # retargeting-threejs
 
-Animation and pose retargeting solver for 3D humanoid characters usoing Threejs.
+Animation and pose retargeting solver for 3D humanoid characters using Threejs.
 
 See [this](docs/Algorithm.md) documentation for the algorithm explanation and some animation related topics.
 
