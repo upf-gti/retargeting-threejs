@@ -32,9 +32,9 @@ class App {
 
     init() {        
         this.scene = new THREE.Scene();
-        let sceneColor = 0x303030;
+        let sceneColor = 0xa0a0a0;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
-        this.scene.fog = new THREE.Fog( sceneColor, 5, 50 );
+        this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
 
         // renderer
         this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -47,7 +47,7 @@ class App {
         document.body.appendChild( this.renderer.domElement );
 
         // include lights
-        let hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.5 );
+        let hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 3 );
         this.scene.add( hemiLight );
 
         let keySpotlight = new THREE.SpotLight( 0xffffff, 3.5, 0, 45 * (Math.PI/180), 0.5, 2 );
@@ -69,7 +69,7 @@ class App {
         this.scene.add( dirLight );
 
         // add entities
-        let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0x4f4f4f, depthWrite: true, roughness: 1, metalness: 0 } ) );
+        let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0xcbcbcb, depthWrite: true, roughness: 1, metalness: 0 } ) );
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.scene.add( ground );
@@ -309,6 +309,7 @@ class App {
         if(this.currentCharacter) {
             this.loadedCharacters[this.currentCharacter].skeletonHelper.visible = visibility;
         }
+        this.scene.getObjectByName("Grid").visible = visibility;
     }
 
     onLoadAvatar(newAvatar, skeleton){      
