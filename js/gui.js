@@ -14,29 +14,128 @@ class Gui {
             "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
             "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png', false],
             "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png', false],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true]
+            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true],
+            "Dancer": ['https://webglstudio.org/3Dcharacters/Dancer/Dancer.glb', 0, "", true]
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
         this.app.renderer.domElement.remove(); // removes from dom
         let main_area = LX.init();
+        // let [panel_area, canvas] = main_area.split("horizontal", ["20%"]);
+        // canvas.attach( this.app.renderer.domElement );
         main_area.attach( this.app.renderer.domElement );
 
         main_area.root.ondrop = (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 
-			this.app.loadFiles(e.dataTransfer.files, () => this.gui.refresh());      
+			//this.app.loadFiles(e.dataTransfer.files, () => this.gui.refresh());      
         };    
         this.panel = null;
 
+        this.srcItemSelected = "";
+        this.trgItemSelected = "";
+
         this.createPanel();
+        //this.createSidePanel(panel_area);
     }
 
     refresh(){
         this.panel.refresh();
     }
 
+    createTransformPanel(type, title) {
+        let avatarName = "";
+        let itemSelected = "";
+        if(type == "source") {
+            avatarName = this.app.currentSourceCharacter;
+            itemSelected = this.srcItemSelected;
+        }
+        else {
+            avatarName = this.app.currentCharacter;
+            itemSelected = this.trgItemSelected;
+        }
+        let character = this.app.loadedCharacters[avatarName];
+
+        if(this.panelTransform) {
+            this.panelTransform.refresh(character, itemSelected);
+            this.dialogTransform.title.innerHTML = this.dialogTransform.title.innerHTML.replace(this.dialogTransform.title.innerText, avatarName) ;
+            return;
+        }
+        this.skeletonPanel = new LX.Panel("Skeleton");
+        this.createSkeletonPanel(this.skeletonPanel, character.skeleton, type);
+
+        this.dialogTransform = new LX.PocketDialog( avatarName, p => {            
+            this.panelTransform = p;
+            this.panelTransform.refresh = (character, itemSelected) => {     
+                p.clear();           
+                this.panelTransform.attach( this.skeletonPanel)         
+                if(itemSelected) {
+                    let root = character.model.getObjectByName(itemSelected);
+                    p.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
+                        root.position.set(value[0], value[1], value[2]);
+                    }, {step:0.01});
+                    p.addVector3("Rotation", [root.rotation.x, root.rotation.y, root.rotation.z], (value, event) => {
+                        root.rotation.set(value[0], value[1], value[2]);
+                    }, {step:0.01});
+                    p.addNumber("Scale", root.scale.x, (value, event) => {
+                        root.scale.set(value, value, value);
+                    }, {step:0.01});                             
+                } 
+            }
+            this.panelTransform.refresh(character, itemSelected);
+        }, {closable: true, onclose: (root) => {
+            
+                this.panelTransform = null;
+                root.remove();
+            }
+        })
+
+    }
+
+    createSidePanel(panel_area) {
+        this.panel = new LX.Panel( "Controls", { size: ["20%", "100%"], float: "left", draggable: false });
+        panel_area.attach(this.panel);
+           
+        let avatars = [];
+        let avatarsWithAnimations = [];
+        for(let avatar in this.avatarOptions) {
+            if(this.avatarOptions[avatar][3]) {
+                avatarsWithAnimations.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""})
+            }                                   
+            avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""});                
+        }
+        this.panel.refresh = (force = false) =>{
+            this.panel.clear();
+            this.createTargetPanel(this.panel, avatars, force);
+            this.createSourcePanel(this.panel, avatarsWithAnimations, force);
+
+            
+            this.panel.branch("Retargeting")
+            this.panel.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
+                this.app.changeSkeletonsVisibility(v);
+            })
+            this.panel.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
+                this.app.srcEmbeddedTransforms = v;
+            })
+            
+            this.panel.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
+                this.app.trgEmbeddedTransforms = v;
+            })
+            
+            if(this.app.currentSourceCharacter) {
+                this.panel.addButton(null, "Apply retargeting", () => {
+                    this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
+                    this.refresh();
+                }, { width: "200px"})
+            }
+            this.panel.merge();            
+        }
+
+        this.panel.refresh(false);           
+
+    }
+        
     createPanel(){
 
         let pocketDialog = new LX.PocketDialog( "Controls", p => {
@@ -50,36 +149,49 @@ class Gui {
                 }                                   
                 avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""});                
             }
-            this.panel.refresh = () =>{
+            this.panel.refresh = (force = false) =>{
                 this.panel.clear();
-                this.createSourcePanel(this.panel, avatarsWithAnimations);
+                this.createTargetPanel(this.panel, avatars, force);
+                this.createSourcePanel(this.panel, avatarsWithAnimations, force);
 
-                this.createTargetPanel(this.panel, avatars);
-                // if(this.app.currentSourceCharacter) {
-
-                //     p.addButton(null, "Apply original bind position", () => {
-                //         let character = this.app.loadedCharacters[this.app.currentCharacter];
-                //         character.skeleton = character.bindSkeleton;
-                //         character.skeleton.update();
-                //     })
-                // }                                
                 
+                p.branch("Retargeting")
                 p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
                     this.app.changeSkeletonsVisibility(v);
                 })
-
+                p.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
+                    this.app.srcEmbeddedTransforms = v;
+                })
+                
+                p.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
+                    this.app.trgEmbeddedTransforms = v;
+                })
+                p.sameLine();
                 if(this.app.currentSourceCharacter) {
                     p.addButton(null, "Apply retargeting", () => {
-                        this.app.applyRetargeting();
+                        this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
                         this.refresh();
                     }, { width: "200px"})
                 }
                 
+                if(this.app.retargeting) {
+                    p.addButton(null, "Export animation", () => {
+                        if(this.app.mixer && this.app.mixer._actions.length) {  
+                            this.showExportDialog((name, animation) => this.app.exportRetargetAnimation(name, animation))                            
+                        }
+                        else {
+                            LX.popup("No retarget animation.", "Warning!", { timeout: 5000})
+                            return;
+                        }
+                    })
+                }
+                p.endLine();
+                p.merge();
             }
 
-            this.panel.refresh();           
+            this.panel.refresh(false);           
 
-        }, { size: ["20%", null], float: "left", draggable: false });
+        }, { size: ["20%", "100%"], float: "left", draggable: false });
         
         
         if ( window.innerWidth < window.innerHeight || pocketDialog.title.offsetWidth > (0.21*window.innerWidth) ){
@@ -87,14 +199,55 @@ class Gui {
         }
 
     }
+    
+    showExportDialog(callback) {
+        let options = { modal : true};
 
-    createSourcePanel(panel, avatarsWithAnimations) {
+        let value = "";
+
+        const dialog = this.prompt = new LX.Dialog("Export retarget animation", p => {
+        
+            let animation =  this.app.mixer._actions[0]._clip;          
+            let name = animation.name;
+            p.addText(null, name, (v) => {
+                name = v;
+            }, {placeholder: "...", minWidth:"100px"} );
+            p.endLine();
+            
+                p.sameLine(2);
+                p.addButton("", options.accept || "OK", (v, e) => { 
+                    e.stopPropagation();
+                    if(options.required && value === '') {
+    
+                        text += text.includes("You must fill the input text.") ? "": "\nYou must fill the input text.";
+                        dialog.close() ;
+                    }else {
+    
+                        if(callback) {
+                            callback(name, animation);
+                        }
+                        dialog.close() ;
+                    }
+                    
+                }, { buttonClass: "accept" });
+                p.addButton("", "Cancel", () => {if(options.on_cancel) options.on_cancel(); dialog.close();} );
+                
+        }, options);
+
+        // Focus text prompt
+        if(options.input !== false && dialog.root.querySelector('input'))
+            dialog.root.querySelector('input').focus();
+    }
+
+    createSourcePanel(panel, avatarsWithAnimations, force) {
         // SOURCE AVATAR/ANIMATION
         panel.branch("Source", {icon: "fa-solid fa-child-reaching"});
 
         panel.sameLine();
         panel.addDropdown("Source", avatarsWithAnimations, this.app.currentSourceCharacter, (value, event) => {
-            
+            if(this.dialogTransform) {
+                this.dialogTransform.close();
+            }
             // upload model
             if (value == "Upload Animation or Avatar") {
                 this.uploadAvatar((value, extension) => {
@@ -132,7 +285,7 @@ class Gui {
 
                     // use controller if it has been already loaded in the past
                     this.app.changeSourceAvatar(value);
-                    this.refresh();
+                    this.refresh(true);
                     // TO  DO: load animations if it has someone
 
                 }, true);
@@ -155,7 +308,7 @@ class Gui {
                 } 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
-                this.refresh();
+                this.refresh(true);
             }
         });
 
@@ -174,7 +327,7 @@ class Gui {
                                 LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
                             }
                             document.getElementById("loading").style.display = "none";
-                            this.refresh();
+                            this.refresh(true);
                         } );
                     }
                     else if( extension == "bvh" || extension == "bvhe") {
@@ -185,7 +338,7 @@ class Gui {
                             }
                             avatarsWithAnimations.push({ value: value, src: ""});
                             document.getElementById("loading").style.display = "none";
-                            this.refresh();
+                            this.refresh(true);
                         })
                     }
                     return;
@@ -200,43 +353,30 @@ class Gui {
         
         panel.endLine();
         if(this.app.currentSourceCharacter) {
-            let character = this.app.loadedCharacters[this.app.currentSourceCharacter];
-           if(character.skeletonHelper) {
-                let root = character.skeletonHelper.bones[0].parent ?? character.model;
-                panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
-                    root.position.set(value[0], value[1], value[2]);
-                }, {step:0.01});
-                panel.addVector3("Rotation", [root.rotation.x, root.rotation.y, root.rotation.z], (value, event) => {
-                    root.rotation.set(value[0], value[1], value[2]);
-                }, {step:0.01});
-                panel.addNumber("Scale", root.scale.x, (value, event) => {
-                    root.scale.set(value, value, value);
-                }, {step:0.01});                             
-            }
-            panel.addButton(null, "Bind pose", () => {
-                this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.pose();
-                let parent = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0].parent;
-                if(parent && !parent.isBone) {
-                    let bone = this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton.bones[0];
-                    bone.matrix.copy( parent.matrixWorld ).invert();
-					bone.matrix.multiply( bone.matrixWorld );
-                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-                    bone.updateWorldMatrix(false, true);
-                }
+                    
+            panel.addButton(null, "Apply original bind pose", () => {
+                
+                this.app.applyOriginalBindPose(this.app.currentSourceCharacter);
                 this.refresh();
             });
+            panel.addButton(null, "Open skeleton panel", () => {
+                
+                this.createTransformPanel("source", "");            
+            });
         }
-        this.createKeyframePanel(panel);
+        this.createAnimationPanel(panel);
 
         panel.merge();
     }
 
-    createTargetPanel(panel, avatars) {
+    createTargetPanel(panel, avatars, force) {
         // TARGET AVATAR
         panel.branch("Target", {icon: "fa-solid fa-people-arrows"});
         panel.sameLine();
         panel.addDropdown("Target avatar", avatars, this.app.currentCharacter, (value, event) => {
-            
+            if(this.dialogTransform) {
+                this.dialogTransform.close();
+            }
             // upload model
             if (value == "Upload Avatar") {
                 this.uploadAvatar((value) => {
@@ -250,14 +390,14 @@ class Gui {
                             avatars.push({ value: value, src: ""});
                             this.app.changeAvatar(value);
                             document.getElementById("loading").style.display = "none";
-                            this.refresh();
+                            this.refresh(true);
                         } );
                         return;
                     } 
 
                     // use controller if it has been already loaded in the past
                     this.app.changeAvatar(value);
-                    this.refresh();
+                    this.refresh(true);
                     // TO  DO: load animations if it has someone
 
                 });
@@ -273,7 +413,7 @@ class Gui {
                         this.app.changeAvatar(value);
                         // TO  DO: load animations if it has someone
                         document.getElementById("loading").style.display = "none";
-                        this.refresh();
+                        this.refresh(true);
                     } );
                     return;
                 } 
@@ -296,14 +436,14 @@ class Gui {
                         this.app.changeAvatar(value);
                         document.getElementById("loading").style.display = "none";
                         // TO  DO: load animations if it has someone
-                        this.refresh();
+                        this.refresh(true);
                     } );
                     return;
                 } 
 
                 // use controller if it has been already loaded in the past
                 this.app.changeAvatar(value);
-                this.refresh();
+                this.refresh(true);
             });
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
@@ -315,40 +455,29 @@ class Gui {
         }
         panel.endLine();
         
-        if(this.app.currentCharacter) {
-            let character = this.app.loadedCharacters[this.app.currentCharacter];
-            if(character.skeletonHelper) {
-                let root = character.skeletonHelper.bones[0].parent ?? character.model;
-                panel.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
-                    root.position.set(value[0], value[1], value[2]);
-                }, {step:0.01});
-                panel.addVector3("Rotation", [root.rotation.x, root.rotation.y, root.rotation.z], (value, event) => {
-                    root.rotation.set(value[0], value[1], value[2]);
-                }, {step:0.01});
-                panel.addNumber("Scale", root.scale.x, (value, event) => {
-                    root.scale.set(value, value, value);
-                }, {step:0.01});                             
-            }
-            panel.addButton(null, "Bind pose", () => {                
-                this.app.loadedCharacters[this.app.currentCharacter].skeleton.pose();
-                let parent = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0].parent;
-                if(parent && !parent.isBone) {
-                    let bone = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones[0];
-                    bone.matrix.copy( parent.matrixWorld ).invert();
-					bone.matrix.multiply( bone.matrixWorld );
-                    bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-                    bone.updateWorldMatrix(false, true);
-                }
+        if(this.app.currentCharacter) {            
+            panel.addButton(null, "Apply original bind pose", () => {                
+                this.app.applyOriginalBindPose(this.app.currentCharacter);
+
                 this.refresh();
+            });
+            panel.addButton(null, "Open skeleton panel", () => {
+                
+                this.createTransformPanel("target", "");            
             });
         }
         panel.merge();
     }
 
-    createKeyframePanel(panel) {
+    createAnimationPanel(panel) {
         panel.addTitle("Animation", {icon: "fa-solid fa-hands-asl-interpreting"});
         panel.sameLine();
-        panel.addDropdown("Animation", Object.keys(this.app.loadedAnimations), this.app.currentAnimation, (v) => {
+        let animations = [];
+        for(let anim in this.app.loadedCharacters[this.app.currentSourceCharacter].animations) {
+           
+            animations.push(this.app.loadedCharacters[this.app.currentSourceCharacter].animations[anim].name);            
+        }
+        panel.addDropdown("Animation", animations, this.app.currentAnimation, (v) => {
             this.app.onChangeAnimation(v);
         });
 
@@ -359,24 +488,140 @@ class Gui {
         panel.endLine(); 
     }
 
+    createSkeletonPanel(panel, skeleton, type, force) {
+        const rootBone = skeleton.bones[0].parent ?? skeleton.bones[0];
+        const parent = rootBone.parent;
+        let itemSelected = "";
+        let sceneTree = {};
+
+        if(type == 'source') {
+            itemSelected = this.srcItemSelected = this.srcItemSelected ? this.srcItemSelected : parent.name;
+        } 
+        else {
+            itemSelected = this.trgItemSelected = this.trgItemSelected ? this.trgItemSelected : parent.name;
+        }
+        if(force || (type == "source" && !this.srcTree || type == "target" && !this.trgTree)) {
+            sceneTree = { 
+                id: parent ? parent.name : rootBone.name,
+                selected: (parent ? parent.name : rootBone.nam) == itemSelected,
+                skipVisibility: true
+            };
+            let children = [];
+            if(parent) {
+                children.push( {
+                    id: rootBone.name,
+                    children: [],
+                    closed: true,
+                    selected: rootBone.name == itemSelected,
+                    skipVisibility: true
+                })
+            }
+            const addChildren = (bone, array) => {
+                
+                for( let b of bone.children ) {
+                    
+                    if ( ! b.isBone ){ continue; }
+                    let child = {
+                        id: b.name,
+                        children: [],
+                        icon: "fa-solid fa-bone",
+                        closed: true,
+                        selected: b.name == itemSelected,
+                        skipVisibility: true
+                    }
+                    
+                    array.push( child );
+                    
+                    addChildren(b, child.children);
+                }
+            };
+            
+            addChildren(rootBone, parent ? children[0].children : children);
+            
+            sceneTree['children'] = children;
+            
+        }
+        
+        if(type == "source") {
+            sceneTree = this.srcTree ? this.srcTree.data : sceneTree;
+        }
+        else {
+            sceneTree = this.trgTree ? this.trgTree.data : sceneTree;
+        }
+        let tree = panel.addTree("Skeleton", sceneTree, { 
+            // filter: false,
+            id: type,
+            rename: false,
+            onevent: (event) => { 
+                console.log(event.string());
+    
+                switch(event.type) {
+                    case LX.TreeEvent.NODE_SELECTED: 
+                        if(event.multiple)
+                            console.log("Selected: ", event.node); 
+                        else {
+                            itemSelected = event.node.id;
+                            if(tree.options.id == 'source') {
+                                this.srcItemSelected = itemSelected;                                
+                            }
+                            else {
+                                this.trgItemSelected = itemSelected;
+                            }
+                            //tree.selected = tree.name == itemSelected;
+                            this.createTransformPanel(tree.options.id, itemSelected);
+                           
+                        }
+                        break;
+                    case LX.TreeEvent.NODE_DELETED: 
+                        if(event.multiple)
+                            console.log("Deleted: ", event.node); 
+                        else
+                            console.log(event.node.id + " deleted"); 
+                        break;
+                    case LX.TreeEvent.NODE_DBLCLICKED: 
+                        console.log(event.node.id + " dbl clicked"); 
+                        break;
+                    case LX.TreeEvent.NODE_CONTEXTMENU: 
+                        const m = event.panel;
+                        m.add( "Components/Transform");
+                        m.add( "Components/MeshRenderer");
+                        break;
+                    case LX.TreeEvent.NODE_DRAGGED: 
+                        console.log(event.node.id + " is now child of " + event.value.id); 
+                        break;
+                    case LX.TreeEvent.NODE_RENAMED:
+                        console.log(event.node.id + " is now called " + event.value); 
+                        break;
+                    case LX.TreeEvent.NODE_VISIBILITY:
+                        console.log(event.node.id + " visibility: " + event.value); 
+                        break;
+                }
+            }
+        });   
+        return tree; 
+    }
+
     uploadAvatar(callback = null, isSource = false) {
         let name, model, extension;
         let rotation = 0;
     
-        let text = "Avatar"; 
+        let title = "Avatar"; 
+        let text = "Load a .gltf or a .glb file."
         if(isSource) {
-            text = "Animation/Avatar ";
+            title = "Animation/Avatar ";
+            text = "Load a .bvh, .bvhe, .gltf or .glb file."
         }
 
-        this.avatarDialog = new LX.Dialog("Upload " + text , panel => {
+        this.avatarDialog = new LX.Dialog("Upload " + title , panel => {
             
-            let nameWidget = panel.addText("Name Your " + text, name, (v, e) => {
+            panel.addText(null, text, null, {disabled: true});
+            let nameWidget = panel.addText("Name Your " + title, name, (v, e) => {
                 if (this.avatarOptions[v]) LX.popup("This name is taken. Please, change it.", null, { position: ["45%", "20%"]});
                 name = v;
             });
 
-            let avatarFile = panel.addFile(text + " File", (v, e) => {
-                let files = panel.widgets[text + " File"].domEl.children[1].files;
+            let avatarFile = panel.addFile(title + " File", (v, e) => {
+                let files = panel.widgets[title + " File"].domEl.children[1].files;
                 if(!files.length) {
                     return;
                 }
@@ -450,7 +695,7 @@ class Gui {
                 }
             })
 
-        }, { size: ["40%"], closable: true, onclose: (root) => { root.remove(); this.gui.setValue("Avatar File", this.app.currentCharacter)} });
+        }, { size: ["40%"], closable: true, onclose: (root) => { root.remove(); if(this.gui) this.gui.setValue("Avatar File", this.app.currentCharacter)} });
 
         return name;
     }

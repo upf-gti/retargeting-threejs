@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { BVHLoader } from './extendedBVHLoader.js';
-
+import { BVHLoader } from './BVHeLoader.js';
+import { BVHExporter } from './BVHExporter.js';
 import { Gui } from './gui.js'
 import { AnimationRetargeting } from './retargeting.js'
 
@@ -53,30 +53,19 @@ class App {
         let keySpotlight = new THREE.SpotLight( 0xffffff, 3.5, 0, 45 * (Math.PI/180), 0.5, 2 );
         keySpotlight.position.set( 0.5, 2, 2 );
         keySpotlight.target.position.set( 0, 1, 0 );
-        // keySpotlight.castShadow = true;
-        // keySpotlight.shadow.mapSize.width = 1024;
-        // keySpotlight.shadow.mapSize.height = 1024;
-        // keySpotlight.shadow.bias = 0.00001;
+     
         this.scene.add( keySpotlight.target );
         this.scene.add( keySpotlight );
 
         let fillSpotlight = new THREE.SpotLight( 0xffffff, 2.0, 0, 45 * (Math.PI/180), 0.5, 2 );
         fillSpotlight.position.set( -0.5, 2, 1.5 );
         fillSpotlight.target.position.set( 0, 1, 0 );
-        // fillSpotlight.castShadow = true;
         this.scene.add( fillSpotlight.target );
         this.scene.add( fillSpotlight );
 
         let dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
         dirLight.position.set( 1.5, 5, 2 );
-        // dirLight.shadow.mapSize.width = 1024;
-        // dirLight.shadow.mapSize.height = 1024;
-        // dirLight.shadow.camera.left= -1;
-        // dirLight.shadow.camera.right= 1;
-        // dirLight.shadow.camera.bottom= -1;
-        // dirLight.shadow.camera.top= 1;
-        // dirLight.shadow.bias = 0.00001;
-        // dirLight.castShadow = true;
+       
         this.scene.add( dirLight );
 
         // add entities
@@ -205,10 +194,7 @@ class App {
         }
         this.currentAnimation = "";
         this.bindedAnimations = {};
-        // if(this.currentCharacter) {
-        //     const target = this.loadedCharacters[this.currentCharacter];
-        //     this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-        // }
+       
         this.retargeting = null;
      
         if ( this.gui ){ this.gui.refresh(); }
@@ -270,10 +256,7 @@ class App {
                             object.castShadow = false;
                         if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                    }
-                    // else if (object.isBone) {
-                    //     object.scale.set(1.0, 1.0, 1.0);
-                    // }
+                    }            
                     
                 } );
     
@@ -284,21 +267,10 @@ class App {
                 if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
             }
                         
-            // model.add( new THREE.SkeletonHelper( model ) );
-
             model.name = avatarName;
+            
             let animations = glb.animations;
-            // let bindSkeleton = skeleton.clone();
-            // bindSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     bindSkeleton.bones.push(skeleton.bones[i].clone());
-            // }
-            // bindSkeleton.pose();
-            // let restSkeleton = skeleton.clone();
-            // restSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     restSkeleton.bones.push(skeleton.bones[i].clone());
-            // }
+         
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
                 model, skeleton, animations, skeletonHelper
@@ -322,6 +294,9 @@ class App {
         this.playing = state;
         if(this.playing && this.mixer) {
             this.mixer.setTime(0);                      
+        }
+        if(this.playing && this.sourceMixer) {
+            this.sourceMixer.setTime(0);                      
         }
     }
 
@@ -362,9 +337,9 @@ class App {
             this.sourceMixer.uncacheClip(this.loadedAnimations[this.currentAnimation].animation);
         }
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
-        this.sourceMixer.update(0);
+        this.sourceMixer.setTime(0);
         this.currentAnimation = animationName;
-        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
     onWindowResize() {
@@ -374,8 +349,9 @@ class App {
     
         this.renderer.setSize( window.innerWidth, window.innerHeight );
     }
+
     // load animation from bvhe file
-    loadBVHAnimation(name, animationData, callback) { // TO DO: Refactor params of loadAnimation...()
+    loadBVHAnimation(name, animationData, callback) { 
 
         let skeleton = null;
         let bodyAnimation = null;
@@ -474,7 +450,7 @@ class App {
                 
                 this.validateAnimationClip(bodyAnimation);
 
-                bodyAnimation.name = "bodyAnimation";   // mixer
+                bodyAnimation.name = animationName;   // mixer
             }                
             
             if(!this.bindedAnimations[animationName]) {
@@ -518,19 +494,47 @@ class App {
         }
         clip.tracks = clip.tracks.concat(newTracks);
     }
-    
-    applyRetargeting() {
+
+    applyOriginalBindPose(characterName) {
+
+        this.loadedCharacters[characterName].skeleton.pose();
+    }
+
+    applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true) {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
-        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
+        
+        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms, trgEmbedWorldTransforms } ); // TO DO: change trgUseCurrentPose param
+        
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+            this.sourceMixer.setTime(0.01);
+            this.sourceMixer.setTime(0.0);
+            this.mixer.setTime(0);
         }
         else {
-             this.retargeting.retargetPose();
+            this.retargeting.retargetPose();
         }
     }
 
+    exportRetargetAnimation(filename, animation) {
+        filename += ".bvh";
+        let action = this.mixer.clipAction(animation)
+        const stringData = BVHExporter.export(action, this.loadedCharacters[this.currentCharacter].skeleton, animation);
+        let file = new Blob([stringData], {type: "text/plain"});
+        if (window.navigator.msSaveOrOpenBlob) // IE10+
+            window.navigator.msSaveOrOpenBlob(file, filename);
+        else { // Others
+            let a = document.createElement("a");
+            const url = URL.createObjectURL(file);
+            a.href = url;
+            a.download = filename;
+            a.click();
+            setTimeout(function() {
+                window.URL.revokeObjectURL(url);  
+            }, 0); 
+        }
+    }
 }
     
 export {App}
