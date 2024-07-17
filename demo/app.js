@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { BVHLoader } from './BVHeLoader.js';
 import { BVHExporter } from './BVHExporter.js';
 import { Gui } from './gui.js'
-import { AnimationRetargeting } from './retargeting.js'
+import { AnimationRetargeting } from '../retargeting.js'
 
 class App {
     constructor() {
@@ -240,6 +240,7 @@ class App {
                         }
                 } else if (object.isBone) {
                     object.scale.set(1.0, 1.0, 1.0);
+                    
                     }
                 } );
             }else{
@@ -256,8 +257,7 @@ class App {
                             object.castShadow = false;
                         if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                    }            
-                    
+                    }                                
                 } );
     
             }
@@ -280,11 +280,11 @@ class App {
             if (callback) {
                 callback(animations);
             }
-        
+       
         });
     }
 
-    loadAnimation( modelFilePath, modelRotation, avatarName, callback = null ) {
+    loadAnimation( modelFilePath, avatarName, callback = null ) {
         
         const data = this.loaderBVH.parseExtended(modelFilePath);
         this.loadBVHAnimation( avatarName, data, callback );     
@@ -534,6 +534,13 @@ class App {
                 window.URL.revokeObjectURL(url);  
             }, 0); 
         }
+    }
+
+    resize(width, height) {
+        const aspect = width / height;
+        this.camera.aspect = aspect;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
     }
 }
     

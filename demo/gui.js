@@ -21,23 +21,42 @@ class Gui {
         // take canvas from dom, detach from dom, attach to lexgui 
         this.app.renderer.domElement.remove(); // removes from dom
         let main_area = LX.init();
-        // let [panel_area, canvas] = main_area.split("horizontal", ["20%"]);
-        // canvas.attach( this.app.renderer.domElement );
-        main_area.attach( this.app.renderer.domElement );
+        let [canvas_area, panel_area ] = main_area.split({type: "horizontal", sizes:["80%", "20%"], minimizable: true});
+       
+        canvas_area.attach( this.app.renderer.domElement );
+        canvas_area.onresize = (bounding) => this.app.resize(bounding.width, bounding.height);
 
-        main_area.root.ondrop = (e) => {
-			e.preventDefault();
-			e.stopPropagation();
 
-			//this.app.loadFiles(e.dataTransfer.files, () => this.gui.refresh());      
-        };    
+        /* Add show/hide right panel button*/
+        canvas_area.addOverlayButtons([
+            {
+                selectable: true,
+                selected: true,
+                icon: "fa-solid fa-gear",
+                name: "Properties",
+                callback: (v, e) => {
+                    if(main_area.split_extended) {
+                        main_area.reduce();
+                    }
+                    else {
+                        main_area.extend();
+                    }
+                }
+            }
+        ], {float: 'tvr'});
+
         this.panel = null;
 
         this.srcItemSelected = "";
         this.trgItemSelected = "";
 
-        this.createPanel();
-        //this.createSidePanel(panel_area);
+       panel_area.addMenubar( m => {
+        m.setButtonIcon("Github", "fa-brands fa-github", () => {window.open("https://github.com/upf-gti/retargeting-threejs")}, {float: "right"});   
+        });
+
+        this.createSidePanel(panel_area);
+        main_area.extend();
+        main_area.reduce();
     }
 
     refresh(){
@@ -57,10 +76,14 @@ class Gui {
         }
         let character = this.app.loadedCharacters[avatarName];
 
-        if(this.panelTransform) {
-            this.panelTransform.refresh(character, itemSelected);
-            this.dialogTransform.title.innerHTML = this.dialogTransform.title.innerHTML.replace(this.dialogTransform.title.innerText, avatarName) ;
-            return;
+        if(this.dialogTransform) {
+            if(this.dialogTransform.title.innerText == avatarName) {
+                this.panelTransform.refresh(character, itemSelected);
+                return; 
+            }
+            else {
+                this.dialogTransform.close();
+            }
         }
         this.skeletonPanel = new LX.Panel("Skeleton");
         this.createSkeletonPanel(this.skeletonPanel, character.skeleton, type);
@@ -84,17 +107,18 @@ class Gui {
                 } 
             }
             this.panelTransform.refresh(character, itemSelected);
-        }, {closable: true, onclose: (root) => {
+        }, {closable: true, float: "l", onclose: (root) => {
             
-                this.panelTransform = null;
                 root.remove();
+                this.panelTransform = null;
+                this.dialogTransform = null;
             }
         })
 
     }
 
     createSidePanel(panel_area) {
-        this.panel = new LX.Panel( "Controls", { size: ["20%", "100%"], float: "left", draggable: false });
+        this.panel = new LX.Panel( "Controls", {  draggable: false });
         panel_area.attach(this.panel);
            
         let avatars = [];
@@ -105,99 +129,49 @@ class Gui {
             }                                   
             avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""});                
         }
+        
         this.panel.refresh = (force = false) =>{
+            let p = this.panel;
             this.panel.clear();
             this.createTargetPanel(this.panel, avatars, force);
             this.createSourcePanel(this.panel, avatarsWithAnimations, force);
 
             
-            this.panel.branch("Retargeting")
-            this.panel.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
+            p.branch("Retargeting")
+            p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
                 this.app.changeSkeletonsVisibility(v);
-            })
-            this.panel.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
+            }, {nameWidth: "auto"})
+            p.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
                 this.app.srcEmbeddedTransforms = v;
-            })
+            },{nameWidth: "auto"})
             
-            this.panel.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
+            p.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
                 this.app.trgEmbeddedTransforms = v;
-            })
-            
+            }, {nameWidth: "auto"})
+            p.sameLine();
             if(this.app.currentSourceCharacter) {
-                this.panel.addButton(null, "Apply retargeting", () => {
+                p.addButton(null, "Apply retargeting", () => {
                     this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
                     this.refresh();
                 }, { width: "200px"})
             }
-            this.panel.merge();            
+            
+            if(this.app.retargeting) {
+                p.addButton(null, "Export animation", () => {
+                    if(this.app.mixer && this.app.mixer._actions.length) {  
+                        this.showExportDialog((name, animation) => this.app.exportRetargetAnimation(name, animation))                            
+                    }
+                    else {
+                        LX.popup("No retarget animation.", "Warning!", { timeout: 5000})
+                        return;
+                    }
+                })
+            }
+            p.endLine();
+            p.merge();
         }
 
-        this.panel.refresh(false);           
-
-    }
-        
-    createPanel(){
-
-        let pocketDialog = new LX.PocketDialog( "Controls", p => {
-            this.panel = p;
-           
-            let avatars = [];
-            let avatarsWithAnimations = [];
-            for(let avatar in this.avatarOptions) {
-                if(this.avatarOptions[avatar][3]) {
-                    avatarsWithAnimations.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""})
-                }                                   
-                avatars.push({ value: avatar, src: this.avatarOptions[avatar][2] ?? ""});                
-            }
-            this.panel.refresh = (force = false) =>{
-                this.panel.clear();
-                this.createTargetPanel(this.panel, avatars, force);
-                this.createSourcePanel(this.panel, avatarsWithAnimations, force);
-
-                
-                p.branch("Retargeting")
-                p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
-                    this.app.changeSkeletonsVisibility(v);
-                })
-                p.addCheckbox("Source embedded transforms", this.app.srcEmbeddedTransforms ?? true, (v) => {
-                    this.app.srcEmbeddedTransforms = v;
-                })
-                
-                p.addCheckbox("Target embedded transforms", this.app.trgEmbeddedTransforms ?? true, (v) => {
-                    this.app.trgEmbeddedTransforms = v;
-                })
-                p.sameLine();
-                if(this.app.currentSourceCharacter) {
-                    p.addButton(null, "Apply retargeting", () => {
-                        this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
-                        this.refresh();
-                    }, { width: "200px"})
-                }
-                
-                if(this.app.retargeting) {
-                    p.addButton(null, "Export animation", () => {
-                        if(this.app.mixer && this.app.mixer._actions.length) {  
-                            this.showExportDialog((name, animation) => this.app.exportRetargetAnimation(name, animation))                            
-                        }
-                        else {
-                            LX.popup("No retarget animation.", "Warning!", { timeout: 5000})
-                            return;
-                        }
-                    })
-                }
-                p.endLine();
-                p.merge();
-            }
-
-            this.panel.refresh(false);           
-
-        }, { size: ["20%", "100%"], float: "left", draggable: false });
-        
-        
-        if ( window.innerWidth < window.innerHeight || pocketDialog.title.offsetWidth > (0.21*window.innerWidth) ){
-            pocketDialog.title.click();
-        }
-
+        this.panel.refresh(false);              
     }
     
     showExportDialog(callback) {
@@ -270,7 +244,7 @@ class Gui {
                             } );
                         }
                         else if( extension == "bvh" || extension == "bvhe") {
-                            this.app.loadAnimation(modelFilePath, modelRotation, value, (animations) => {
+                            this.app.loadAnimation(modelFilePath, value, (animations) => {
                                 this.app.changeSourceAvatar(value);
                                 if(!animations.length) {
                                     LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
@@ -398,7 +372,6 @@ class Gui {
                     // use controller if it has been already loaded in the past
                     this.app.changeAvatar(value);
                     this.refresh(true);
-                    // TO  DO: load animations if it has someone
 
                 });
             }
@@ -701,7 +674,10 @@ class Gui {
     }
 
     showBoneMapping() {
-        let dialog = new LX.Dialog("Bone Mapping", panel => { 
+        if(this.dialog) {
+            this.dialog.close();
+        }
+        this.dialog = new LX.Dialog("Bone Mapping", panel => { 
             let htmlStr = "Select the corresponding bone name of your avatar to match the provided list of bone names. An automatic selection is done, adjust if needed.";
             panel.addTextArea(null, htmlStr, null, {disabled: true, fitHeight: true});
             const bones = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones;
@@ -724,8 +700,8 @@ class Gui {
             if(this.app.currentAnimation) {
                 this.app.bindAnimationToCharacter(this.app.currentAnimation, this.app.currentCharacter);
             }
-            dialog.panel.clear();
-            dialog.root.remove();
+            this.dialog.panel.clear();
+            this.dialog.root.remove();
         } });        
     }
 }
