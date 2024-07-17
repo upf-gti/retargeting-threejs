@@ -1,13 +1,13 @@
 # retargeting-threejs
- 
+
 Animation and pose retargeting solver for 3D humanoid characters usoing Threejs.
 
-See [this](docs/Algorithm.md) documentation about the algorithm and some animation related topics
+See [this](docs/Algorithm.md) documentation for the algorithm explanation and some animation related topics.
 
-[[Try demo](https://webglstudio.org/demos/retargeting-threejs/)]
+[[Try demo](https://webglstudio.org/demos/retargeting-threejs/demo)]
 
-# Set up
-The <b>retargeting.js</b> expects an importmap for "three". Include the following lines in your index.html
+## Set up
+To use the code, include the <b>retargeting.js</b> file in your project and include the following lines in your <b>index.html</b>. The <b>retargeting.js</b> expects an importmap for "three":
 ``` html
 <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
@@ -18,7 +18,7 @@ The <b>retargeting.js</b> expects an importmap for "three". Include the followin
     }
 </script>
 ```
-# API
+## API
 
 ``` javascript
 // example offline retarget
@@ -39,7 +39,7 @@ retargeting.retargetAnimation( sourceAnim );
 ```
 
 
-##  Constructor
+###  Constructor
 
 Retargets animations and/or current poses from one skeleton to another. 
 Both skeletons must have the same bind pose (same orientation for each mapped bone) in order to properly work.
@@ -61,9 +61,9 @@ Useful when it is easier to modify the container of the skeleton rather than the
 
   
 
-## Static Properties
+### Static Properties
 
-### BindPoseModes
+#### BindPoseModes
 Enumeration that determines which pose will be used as the retargeting bind pose.
 
 - `DEFAULT` or `0`: Uses skeleton's actual bind pose
@@ -71,16 +71,16 @@ Enumeration that determines which pose will be used as the retargeting bind pose
 - `TPOSE` or `2`: Forces the skeleton's current pose to T-pose and uses skeleton's current pose
 
 
-## Methods 
+### Methods 
 
-### retargetPose
+#### retargetPose
 Retargets the current pose from the source skeleton to the target skeleton. Only the mapped bones are computed.
 
 ``` javascript
 .retargetPose() : undefined
 ```
 
-### retargetAnimation
+#### retargetAnimation
 Retargets a THREEJS AnimationClip from source to target skeleton. Returns another AnimationClip.
 Only mapped bones are computed
 
@@ -90,7 +90,7 @@ Only mapped bones are computed
 - `anim`: THREE.AnimationClip <br> animation to retarget
 
 
-# Usual issues
+## Usual issues 
 
 A failed retargeting might be due to many reasons.
 
@@ -99,28 +99,28 @@ The lack of movement might be caused by an improper bone mapping or bad track ID
 Weird target rotations might also be due to improper bone mapping. However, most commonly, it will be caused by incorrect set up of the auxiliary pose. The API exposes some attributes to alleviate this
 
 
-### Case A: Successful Retargeting
+#### :heavy_check_mark: Case A: Successful Retargeting
 <div style="display:flex; flex-wrap: wrap; width='100%' ">
-    <image src="imgs/GoodPose.png" alt="Good skeleton bind pose" width="50%"></image>
-    <image src="imgs/GoodRetarget.png" alt="Good skeleton bind pose" width="50%"></image> 
+    <image src="docs/imgs/GoodPose.png" alt="Good skeleton bind pose" width="50%"></image>
+    <image src="docs/imgs/GoodRetarget.png" alt="Good skeleton bind pose" width="50%"></image> 
 </div>
 
 Case A shows a successful retargeting from the avatar on the left (red shirt) to the avatar on the right(white shirt). Note the white avatar only moves one finger as the source avatar only has one finger. It could have been manually mapped instead of relying on the automap.
 
-### Case B: Current pose modification
+#### :warning: Case B: Current pose modification
 
 <div style="display:flex; flex-wrap: wrap; width='100%' ">
-    <image src="imgs/BadCurrentPose.png" alt="Bad skeleton bind Pose that requires modifying a joint" width="50%"></image>
-    <image src="imgs/BadCurrentPoseRetarget.png" alt="Bad skeleton bind Pose that requires modifying a joint" width="50%"></image> 
+    <image src="docs/imgs/BadCurrentPose.png" alt="Bad skeleton bind Pose that requires modifying a joint" width="50%"></image>
+    <image src="docs/imgs/BadCurrentPoseRetarget.png" alt="Bad skeleton bind Pose that requires modifying a joint" width="50%"></image> 
 </div>
 
 Case B shows an example where both skeleton's auxiliary pose are different. In this particular case, only the root joint (hips) differs. Since the world rotations of the source avatar do not mean the same for the target avatar, the resulting animation look weird. For this case, it would suffice to rotate 90º the root joint and instantiating the AnimationRetargeting class with the `trgPoseMode` set to `CURRENT`, so it checks for the current modified target bone setup.
 
-### Case C: World transform embeding
+#### :warning: Case C: World transform embeding
 
 <div style="display:flex; flex-wrap: wrap; width='100%' ">
-    <image src="imgs/BadEmbedPose.png" width="50%" alt="Bad skeleton's bind pose that requires modifying the container's transform"></image>
-    <image src="imgs/BadEmbedRetarget.png" width="50%" alt="Bad skeleton's bind pose that requires modifying the container's transform"></image>
+    <image src="docs/imgs/BadEmbedPose.png" width="50%" alt="Bad skeleton's bind pose that requires modifying the container's transform"></image>
+    <image src="docs/imgs/BadEmbedRetarget.png" width="50%" alt="Bad skeleton's bind pose that requires modifying the container's transform"></image>
 </div>
 
 
