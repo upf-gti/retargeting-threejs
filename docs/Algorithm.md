@@ -35,7 +35,8 @@ A <b>pose</b> is a particular configuration of the transformation (<b>position</
 ![Poses comparison](imgs/Poses.png)
 
 ## Understanding the retargeting algorithm 
-The algorithm used derives from [this](https://github.com/sketchpunk/FunWithWebGL2/tree/master/lesson_132_animation_retargeting). Given two skeletons, an animation can be approximately retargeted using an auxiliary pose shared by both skeletons. As long as the bone heriarchy and the auxiliary pose of both skeletons are similar, the retargeting can be successfully performed. However, some issues can appear as bone proportions might differ. This might result in missed bone contacts. This algorithm is particularly useful to retarget vague animations such as running or walking.
+The algorithm used derives from 
+[@sketchpunk](https://github.com/sketchpunk/FunWithWebGL2/tree/master/lesson_132_animation_retargeting). Given two skeletons, an animation can be approximately retargeted using an auxiliary pose shared by both skeletons. As long as the bone heriarchy and the auxiliary pose of both skeletons are similar, the retargeting can be successfully performed. However, some issues can appear as bone proportions might differ. This might result in missed bone contacts. This algorithm is particularly useful to retarget vague animations such as running or walking.
 
 ### 1. Joint mapping
 The algorithm starts mapping each joint of the source skeleton to a corresponding joint in the target skeleton by name. In this approach, the same skeleton structure is assumed, so the mapping is one-to-on. But some joints may need to be interpolated if the skeleton has a different structure.
