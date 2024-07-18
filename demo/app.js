@@ -46,27 +46,36 @@ class App {
         // this.renderer.shadowMap.enabled = false;
         document.body.appendChild( this.renderer.domElement );
 
-        // include lights
-        let hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 3 );
+        //include lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        this.scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
+        hemiLight.position.set( 0, 50, 0 );
         this.scene.add( hemiLight );
 
-        let keySpotlight = new THREE.SpotLight( 0xffffff, 3.5, 0, 45 * (Math.PI/180), 0.5, 2 );
-        keySpotlight.position.set( 0.5, 2, 2 );
-        keySpotlight.target.position.set( 0, 1, 0 );
-     
-        this.scene.add( keySpotlight.target );
-        this.scene.add( keySpotlight );
+        const hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
+        this.scene.add( hemiLightHelper );
 
-        let fillSpotlight = new THREE.SpotLight( 0xffffff, 2.0, 0, 45 * (Math.PI/180), 0.5, 2 );
-        fillSpotlight.position.set( -0.5, 2, 1.5 );
-        fillSpotlight.target.position.set( 0, 1, 0 );
-        this.scene.add( fillSpotlight.target );
-        this.scene.add( fillSpotlight );
-
-        let dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
-        dirLight.position.set( 1.5, 5, 2 );
-       
+        const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
+        dirLight.position.set( - 1, 1.75, 1 );
+        dirLight.position.multiplyScalar( 30 );
         this.scene.add( dirLight );
+
+        dirLight.castShadow = true;
+
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+
+        const d = 50;
+
+        dirLight.shadow.camera.left = - d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = - d;
+
+        dirLight.shadow.camera.far = 3500;
+        dirLight.shadow.bias = - 0.0001;
 
         // add entities
         let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0xcbcbcb, depthWrite: true, roughness: 1, metalness: 0 } ) );
