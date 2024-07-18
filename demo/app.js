@@ -180,7 +180,7 @@ class App {
         
         this.currentSourceCharacter = avatarName;
         const character =  this.loadedCharacters[this.currentSourceCharacter];
-        character.model.position.x = -1;
+        //character.model.position.x = -1;
         this.scene.add( character.model ); // add model to scene
         if(character.skeletonHelper) {
             character.skeletonHelper.visible = this.showSkeletons;
@@ -279,7 +279,18 @@ class App {
             model.name = avatarName;
             
             let animations = glb.animations;
-         
+            // if(skeleton.bones[0].parent && skeleton.bones[0].parent != model) {
+            //     model.position.copy(skeleton.bones[0].parent.position);
+            //     model.rotation.copy(skeleton.bones[0].parent.rotation);
+            //     model.scale.copy(skeleton.bones[0].parent.scale);
+            //     model.updateWorldMatrix(false, true);
+
+            //     skeleton.bones[0].parent.position.set(0,0,0);
+            //     skeleton.bones[0].parent.rotation.set(0,0,0);
+            //     skeleton.bones[0].parent.scale.set(1,1,1);
+            //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
+
+            // }
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
                 model, skeleton, animations, skeletonHelper
@@ -507,7 +518,14 @@ class App {
 
     applyOriginalBindPose(characterName) {
 
-        this.loadedCharacters[characterName].skeleton.pose();
+        let skeleton = this.loadedCharacters[characterName].skeleton;
+        skeleton.pose();
+        if ( skeleton.bones[0].parent ) {
+
+            skeleton.bones[0].matrix.copy( skeleton.bones[0].parent.matrixWorld ).invert();
+            skeleton.bones[0].matrix.multiply( skeleton.bones[0].matrixWorld );
+            skeleton.bones[0].matrix.decompose( skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale );
+        } 
     }
 
     applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true) {
@@ -523,7 +541,7 @@ class App {
             this.mixer.setTime(0);
         }
         else {
-            this.retargeting.retargetPose();
+           // this.retargeting.retargetPose();
         }
     }
 

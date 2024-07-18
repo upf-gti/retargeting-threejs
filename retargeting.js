@@ -77,9 +77,7 @@ class AnimationRetargeting {
      */
     cloneRawSkeleton( skeleton, poseMode, embedWorld = false ){
         let bones = skeleton.bones;
-        if(poseMode == AnimationRetargeting.BindPoseModes.TPOSE) {
-            skeleton.pose();
-        }
+     
         let resultBones = new Array( bones.length );
         let parentIndices = new Int16Array( bones.length );
 
@@ -92,6 +90,7 @@ class AnimationRetargeting {
         for( let i = 0; i < bones.length; ++i ){
             let parentIdx = findIndexOfBone( skeleton, bones[i].parent )
             if ( parentIdx > -1 ){ resultBones[ parentIdx ].add( resultBones[ i ] ); }
+            
             parentIndices[i] = parentIdx;
         }
 
@@ -107,10 +106,11 @@ class AnimationRetargeting {
             case AnimationRetargeting.BindPoseModes.TPOSE:
                  // Force bind pose as T-pose
                 resultSkeleton = new THREE.Skeleton( resultBones );
-                resultSkeleton.pose();           
+                resultSkeleton.pose();  
                 resultSkeleton = this.applyTPose(resultSkeleton, skeleton == this.trgSkeleton);
-                resultSkeleton = new THREE.Skeleton( resultSkeleton.bones)
+                resultSkeleton.calculateInverses();
                 resultSkeleton.update();
+                
                 break;
             default:
                 let boneInverses = new Array( skeleton.boneInverses.length );
@@ -148,7 +148,6 @@ class AnimationRetargeting {
             skeleton.bones[0].parent.matrixWorld.clone().invert().decompose( t.p, t.q, t.s );
             resultSkeleton.transformsWorldEmbedded = embedded;
         }
-
         return resultSkeleton;
     }
 
