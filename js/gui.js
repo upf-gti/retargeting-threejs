@@ -116,7 +116,7 @@ class Gui {
                             } );
                         }
                         else if( extension == "bvh" || extension == "bvhe") {
-                            this.app.loadAnimation(modelFilePath, modelRotation, value, (animations) => {
+                            this.app.loadAnimation(modelFilePath, value, (animations) => {
                                 this.app.changeSourceAvatar(value);
                                 if(!animations.length) {
                                     LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
@@ -172,7 +172,7 @@ class Gui {
                         } );
                     }
                     else if( extension == "bvh" || extension == "bvhe") {
-                        this.app.loadAnimation(modelFilePath, modelRotation, value, (animations) => {
+                        this.app.loadAnimation(modelFilePath, value, (animations) => {
                             this.app.changeSourceAvatar(value);
                             if(!animations.length) {
                                 LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
