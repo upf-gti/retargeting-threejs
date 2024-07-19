@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { BVHLoader } from './extendedBVHLoader.js';
-
+import { BVHLoader } from './BVHeLoader.js';
+import { BVHExporter } from './BVHExporter.js';
 import { Gui } from './gui.js'
-import { AnimationRetargeting, forceBindPoseQuats } from './retargeting.js'
+import { AnimationRetargeting } from '../retargeting.js'
 
 class App {
     constructor() {
@@ -32,9 +32,9 @@ class App {
 
     init() {        
         this.scene = new THREE.Scene();
-        let sceneColor = 0x303030;
+        let sceneColor = 0xa0a0a0;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
-        this.scene.fog = new THREE.Fog( sceneColor, 5, 50 );
+        this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
 
         // renderer
         this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -46,45 +46,46 @@ class App {
         // this.renderer.shadowMap.enabled = false;
         document.body.appendChild( this.renderer.domElement );
 
-        // include lights
-        let hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.5 );
+        //include lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        this.scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
+        hemiLight.position.set( 0, 50, 0 );
         this.scene.add( hemiLight );
 
-        let keySpotlight = new THREE.SpotLight( 0xffffff, 3.5, 0, 45 * (Math.PI/180), 0.5, 2 );
-        keySpotlight.position.set( 0.5, 2, 2 );
-        keySpotlight.target.position.set( 0, 1, 0 );
-        // keySpotlight.castShadow = true;
-        // keySpotlight.shadow.mapSize.width = 1024;
-        // keySpotlight.shadow.mapSize.height = 1024;
-        // keySpotlight.shadow.bias = 0.00001;
-        this.scene.add( keySpotlight.target );
-        this.scene.add( keySpotlight );
+        const hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
+        this.scene.add( hemiLightHelper );
 
-        let fillSpotlight = new THREE.SpotLight( 0xffffff, 2.0, 0, 45 * (Math.PI/180), 0.5, 2 );
-        fillSpotlight.position.set( -0.5, 2, 1.5 );
-        fillSpotlight.target.position.set( 0, 1, 0 );
-        // fillSpotlight.castShadow = true;
-        this.scene.add( fillSpotlight.target );
-        this.scene.add( fillSpotlight );
-
-        let dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
-        dirLight.position.set( 1.5, 5, 2 );
-        // dirLight.shadow.mapSize.width = 1024;
-        // dirLight.shadow.mapSize.height = 1024;
-        // dirLight.shadow.camera.left= -1;
-        // dirLight.shadow.camera.right= 1;
-        // dirLight.shadow.camera.bottom= -1;
-        // dirLight.shadow.camera.top= 1;
-        // dirLight.shadow.bias = 0.00001;
-        // dirLight.castShadow = true;
+        const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
+        dirLight.position.set( - 1, 1.75, 1 );
+        dirLight.position.multiplyScalar( 30 );
         this.scene.add( dirLight );
 
+        dirLight.castShadow = true;
+
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+
+        const d = 50;
+
+        dirLight.shadow.camera.left = - d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = - d;
+
+        dirLight.shadow.camera.far = 3500;
+        dirLight.shadow.bias = - 0.0001;
+
         // add entities
-        let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0x4f4f4f, depthWrite: true, roughness: 1, metalness: 0 } ) );
+        let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0xcbcbcb, depthWrite: true, roughness: 1, metalness: 0 } ) );
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.scene.add( ground );
 
+        const grid = new THREE.GridHelper(300, 300, 0x101010, 0x555555 );
+        grid.name = "Grid";
+        this.scene.add(grid);
        
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 1000);
         this.camera.position.set(0,1.2,2);
@@ -179,7 +180,7 @@ class App {
         
         this.currentSourceCharacter = avatarName;
         const character =  this.loadedCharacters[this.currentSourceCharacter];
-        character.model.position.x = -1;
+        //character.model.position.x = -1;
         this.scene.add( character.model ); // add model to scene
         if(character.skeletonHelper) {
             character.skeletonHelper.visible = this.showSkeletons;
@@ -202,10 +203,7 @@ class App {
         }
         this.currentAnimation = "";
         this.bindedAnimations = {};
-        // if(this.currentCharacter) {
-        //     const target = this.loadedCharacters[this.currentCharacter];
-        //     this.retargeting = new AnimationRetargeting(character.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-        // }
+       
         this.retargeting = null;
      
         if ( this.gui ){ this.gui.refresh(); }
@@ -251,13 +249,14 @@ class App {
                         }
                 } else if (object.isBone) {
                     object.scale.set(1.0, 1.0, 1.0);
+                    
                     }
                 } );
             }else{
                 model.traverse( (object) => {
                     if ( object.isMesh || object.isSkinnedMesh ) {
                         if (object.skeleton){
-                            skeleton = object.skeleton; 
+                            skeleton = object.skeleton;                         
                         }
                         object.material.side = THREE.FrontSide;
                         object.frustumCulled = false;
@@ -267,7 +266,7 @@ class App {
                             object.castShadow = false;
                         if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                }
+                    }                                
                 } );
     
             }
@@ -277,20 +276,20 @@ class App {
                 if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
             }
                         
-            // model.add( new THREE.SkeletonHelper( model ) );
-
             model.name = avatarName;
+            
             let animations = glb.animations;
-            // let bindSkeleton = skeleton.clone();
-            // bindSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     bindSkeleton.bones.push(skeleton.bones[i].clone());
-            // }
-            // bindSkeleton.pose();
-            // let restSkeleton = skeleton.clone();
-            // restSkeleton.bones = [];
-            // for(let i = 0; i < skeleton.bones.length; i++) {
-            //     restSkeleton.bones.push(skeleton.bones[i].clone());
+            // if(skeleton.bones[0].parent && skeleton.bones[0].parent != model) {
+            //     model.position.copy(skeleton.bones[0].parent.position);
+            //     model.rotation.copy(skeleton.bones[0].parent.rotation);
+            //     model.scale.copy(skeleton.bones[0].parent.scale);
+            //     model.updateWorldMatrix(false, true);
+
+            //     skeleton.bones[0].parent.position.set(0,0,0);
+            //     skeleton.bones[0].parent.rotation.set(0,0,0);
+            //     skeleton.bones[0].parent.scale.set(1,1,1);
+            //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
+
             // }
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
@@ -301,24 +300,23 @@ class App {
             if (callback) {
                 callback(animations);
             }
-        
+       
         });
     }
 
-    loadAnimation( modelFilePath, modelRotation, avatarName, callback = null ) {
+    loadAnimation( modelFilePath, avatarName, callback = null ) {
         
         const data = this.loaderBVH.parseExtended(modelFilePath);
-        this.loadBVHAnimation( avatarName, data );
-
-        if(callback) {
-            callback();
-        }        
+        this.loadBVHAnimation( avatarName, data, callback );     
     } 
 
     changePlayState(state = !this.playing) {
         this.playing = state;
         if(this.playing && this.mixer) {
             this.mixer.setTime(0);                      
+        }
+        if(this.playing && this.sourceMixer) {
+            this.sourceMixer.setTime(0);                      
         }
     }
 
@@ -331,6 +329,7 @@ class App {
         if(this.currentCharacter) {
             this.loadedCharacters[this.currentCharacter].skeletonHelper.visible = visibility;
         }
+        this.scene.getObjectByName("Grid").visible = visibility;
     }
 
     onLoadAvatar(newAvatar, skeleton){      
@@ -359,9 +358,9 @@ class App {
             this.sourceMixer.uncacheClip(this.loadedAnimations[this.currentAnimation].animation);
         }
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
-        this.sourceMixer.update(0);
+        this.sourceMixer.setTime(0);
         this.currentAnimation = animationName;
-        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
     onWindowResize() {
@@ -371,8 +370,9 @@ class App {
     
         this.renderer.setSize( window.innerWidth, window.innerHeight );
     }
+
     // load animation from bvhe file
-    loadBVHAnimation(name, animationData) { // TO DO: Refactor params of loadAnimation...()
+    loadBVHAnimation(name, animationData, callback) { 
 
         let skeleton = null;
         let bodyAnimation = null;
@@ -415,6 +415,9 @@ class App {
             model: skeletonHelper, skeleton, animations: [this.loadedAnimations[name].animation]
         }
         this.onLoadAvatar(skeletonHelper, skeleton);
+        if (callback) {
+            callback(this.loadedCharacters[name].animations);
+        }
     }
 
     /**
@@ -460,12 +463,15 @@ class App {
                     tracks[tracks.length - 1].name = tracks[tracks.length - 1].name.replace( /[\[\]`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "").replace(".bones", "");
                 }
 
-                bodyAnimation.tracks = tracks;            
-                bodyAnimation = this.retargeting.retargetAnimation(bodyAnimation);
+                bodyAnimation.tracks = tracks;  
+                if( this.retargeting )
+                {
+                    bodyAnimation = this.retargeting.retargetAnimation(bodyAnimation);
+                }
                 
                 this.validateAnimationClip(bodyAnimation);
 
-                bodyAnimation.name = "bodyAnimation";   // mixer
+                bodyAnimation.name = animationName;   // mixer
             }                
             
             if(!this.bindedAnimations[animationName]) {
@@ -509,15 +515,61 @@ class App {
         }
         clip.tracks = clip.tracks.concat(newTracks);
     }
-    
-    applyRetargeting() {
-        const source = this.loadedCharacters[this.currentSourceCharacter];
-        const target = this.loadedCharacters[this.currentCharacter];
-        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcUseCurrentPose: true, trgUseCurrentPose: true, trgEmbedWorldTransforms: true } ); // TO DO: change trgUseCurrentPose param
-   
-        //this.retargeting.retargetPose();
+
+    applyOriginalBindPose(characterName) {
+
+        let skeleton = this.loadedCharacters[characterName].skeleton;
+        skeleton.pose();
+        if ( skeleton.bones[0].parent ) {
+
+            skeleton.bones[0].matrix.copy( skeleton.bones[0].parent.matrixWorld ).invert();
+            skeleton.bones[0].matrix.multiply( skeleton.bones[0].matrixWorld );
+            skeleton.bones[0].matrix.decompose( skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale );
+        } 
     }
 
+    applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true) {
+        const source = this.loadedCharacters[this.currentSourceCharacter];
+        const target = this.loadedCharacters[this.currentCharacter];
+        
+        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms, trgEmbedWorldTransforms } ); // TO DO: change trgUseCurrentPose param
+        
+        if(this.currentAnimation) {
+            this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+            this.sourceMixer.setTime(0.01);
+            this.sourceMixer.setTime(0.0);
+            this.mixer.setTime(0);
+        }
+        else {
+           // this.retargeting.retargetPose();
+        }
+    }
+
+    exportRetargetAnimation(filename, animation) {
+        filename += ".bvh";
+        let action = this.mixer.clipAction(animation)
+        const stringData = BVHExporter.export(action, this.loadedCharacters[this.currentCharacter].skeleton, animation);
+        let file = new Blob([stringData], {type: "text/plain"});
+        if (window.navigator.msSaveOrOpenBlob) // IE10+
+            window.navigator.msSaveOrOpenBlob(file, filename);
+        else { // Others
+            let a = document.createElement("a");
+            const url = URL.createObjectURL(file);
+            a.href = url;
+            a.download = filename;
+            a.click();
+            setTimeout(function() {
+                window.URL.revokeObjectURL(url);  
+            }, 0); 
+        }
+    }
+
+    resize(width, height) {
+        const aspect = width / height;
+        this.camera.aspect = aspect;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    }
 }
     
 export {App}
