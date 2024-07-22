@@ -259,6 +259,7 @@ class Gui {
 
                     // use controller if it has been already loaded in the past
                     this.app.changeSourceAvatar(value);
+                    this.srcItemSelected = "";
                     this.refresh(true);
                     // TO  DO: load animations if it has someone
 
@@ -282,6 +283,8 @@ class Gui {
                 } 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
+                this.srcItemSelected = "";
+
                 this.refresh(true);
             }
         });
@@ -320,6 +323,8 @@ class Gui {
 
                 // use controller if it has been already loaded in the past
                 this.app.changeSourceAvatar(value);
+                this.srcItemSelected = "";
+
                 this.refresh();
 
             }, true);
@@ -371,6 +376,8 @@ class Gui {
 
                     // use controller if it has been already loaded in the past
                     this.app.changeAvatar(value);
+                    this.trgItemSelected = "";
+
                     this.refresh(true);
 
                 });
@@ -393,6 +400,8 @@ class Gui {
 
                 // use controller if it has been already loaded in the past
                 this.app.changeAvatar(value);
+                this.trgItemSelected = "";
+
                 this.refresh();
             }
         });

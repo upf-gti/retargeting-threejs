@@ -215,13 +215,11 @@ class App {
             model.quaternion.premultiply( modelRotation );
             model.castShadow = true;
             let skeleton = null;
-
+            let bones = [];
             if(avatarName == "Witch") {
                 model.traverse( (object) => {
                     if ( object.isMesh || object.isSkinnedMesh ) {
-                        if (object.skeleton){
-                            skeleton = object.skeleton; 
-                        }                    
+                                          
                         if(!object.name.includes("Hat"))
                            object.material.side = THREE.FrontSide;
                         object.frustumCulled = false;
@@ -247,17 +245,17 @@ class App {
                             object.material.map = null;
                             object.material.color.set(0x19A7A3);
                         }
-                } else if (object.isBone) {
-                    object.scale.set(1.0, 1.0, 1.0);
-                    
+                    } else if (object.isBone) {
+                        object.scale.set(1.0, 1.0, 1.0);                    
+                        bones.push(object);
                     }
+                    if (object.skeleton){
+                        skeleton = object.skeleton; 
+                    }  
                 } );
             }else{
                 model.traverse( (object) => {
-                    if ( object.isMesh || object.isSkinnedMesh ) {
-                        if (object.skeleton){
-                            skeleton = object.skeleton;                         
-                        }
+                    if ( object.isMesh || object.isSkinnedMesh ) {                        
                         object.material.side = THREE.FrontSide;
                         object.frustumCulled = false;
                         object.castShadow = true;
@@ -266,7 +264,12 @@ class App {
                             object.castShadow = false;
                         if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                    }                                
+                    } else if(object.isBone) {
+                        bones.push(object);
+                    }                               
+                    if (object.skeleton){
+                        skeleton = object.skeleton;                         
+                    }
                 } );
     
             }
@@ -291,6 +294,17 @@ class App {
             //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
 
             // }
+            // if(skeleton.bones[0].parent) {
+            //     skeleton.bones[0].parent.matrix.decompose(skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale);
+            //     skeleton.bones[0].updateWorldMatrix(true, true);
+            // }
+            if(!skeleton && bones.length) {
+                skeleton = new THREE.Skeleton(bones);
+                for(let i = 0; i < animations.length; i++) {
+                    this.loadBVHAnimation(avatarName, {skeletonAnim :{skeleton, clip: animations[i]}}, i == (animations.length - 1) ? callback : null)
+                }
+                return;
+            }
             let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
             this.loadedCharacters[avatarName] ={
                 model, skeleton, animations, skeletonHelper
@@ -379,12 +393,12 @@ class App {
         let faceAnimation = null;
         if ( animationData && animationData.skeletonAnim ){
             skeleton = animationData.skeletonAnim.skeleton;
-            skeleton.bones.forEach( b => { b.name = b.name.replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "") } );
+            skeleton.bones.forEach( b => { b.name = b.name.replace( /[`~!@#$%^&*()|+\-=?;:'"<>\{\}\\\/]/gi, "") } );
             // loader does not correctly compute the skeleton boneInverses and matrixWorld 
             skeleton.bones[0].updateWorldMatrix( false, true ); // assume 0 is root
             skeleton = new THREE.Skeleton( skeleton.bones ); // will automatically compute boneInverses
             
-            animationData.skeletonAnim.clip.tracks.forEach( b => { b.name = b.name.replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "") } );     
+            animationData.skeletonAnim.clip.tracks.forEach( b => { b.name = b.name.replace( /[`~!@#$%^&*()|+\-=?;:'"<>\{\}\\\/]/gi, "") } );     
             animationData.skeletonAnim.clip.name = name;
             bodyAnimation = animationData.skeletonAnim.clip;
         }
@@ -460,7 +474,7 @@ class App {
                         continue;
                     }
                     tracks.push(bodyAnimation.tracks[i]);
-                    tracks[tracks.length - 1].name = tracks[tracks.length - 1].name.replace( /[\[\]`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "").replace(".bones", "");
+                    tracks[tracks.length - 1].name = tracks[tracks.length - 1].name.replace( /[\[\]`~!@#$%^&*()|+\-=?;:'"<>\{\}\\\/]/gi, "").replace(".bones", "");
                 }
 
                 bodyAnimation.tracks = tracks;  
