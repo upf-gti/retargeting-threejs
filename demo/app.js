@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { BVHLoader } from './BVHeLoader.js';
 import { BVHExporter } from './BVHExporter.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js' 
 import { Gui } from './gui.js'
 import { AnimationRetargeting } from '../retargeting.js'
 
@@ -13,7 +14,7 @@ class App {
         this.clock = new THREE.Clock();
         this.loaderBVH = new BVHLoader();
         this.loaderGLB = new GLTFLoader();
-        
+        this.GLTFExporter = new GLTFExporter();
         this.currentCharacter = "";
         this.loadedCharacters = {}; // store avatar loadedCharacters
 
@@ -559,22 +560,35 @@ class App {
         }
     }
 
-    exportRetargetAnimation(filename, animation) {
-        filename += ".bvh";
+    exportRetargetAnimation(filename, animation, format) {
+
+        const innerDownload = function(filename, stringData, type = "text/plain") {
+            let file = new Blob([stringData], {type: type});
+            if (window.navigator.msSaveOrOpenBlob) // IE10+
+                window.navigator.msSaveOrOpenBlob(file, filename);
+            else { // Others
+                let a = document.createElement("a");
+                let url = URL.createObjectURL(file);
+                a.href = url;
+                a.download = filename;
+                a.click();
+                setTimeout(function() {
+                    window.URL.revokeObjectURL(url);  
+                }, 0); 
+            }
+        }
         let action = this.mixer.clipAction(animation)
-        const stringData = BVHExporter.export(action, this.loadedCharacters[this.currentCharacter].skeleton, animation);
-        let file = new Blob([stringData], {type: "text/plain"});
-        if (window.navigator.msSaveOrOpenBlob) // IE10+
-            window.navigator.msSaveOrOpenBlob(file, filename);
-        else { // Others
-            let a = document.createElement("a");
-            const url = URL.createObjectURL(file);
-            a.href = url;
-            a.download = filename;
-            a.click();
-            setTimeout(function() {
-                window.URL.revokeObjectURL(url);  
-            }, 0); 
+        if(format == 'bvh') {
+            const stringData = BVHExporter.export(action, this.loadedCharacters[this.currentCharacter].skeleton, animation);
+            innerDownload(filename + ".bvh", stringData);
+        }
+        else {
+            let options = {animations: [this.bindedAnimations[this.currentAnimation][this.currentCharacter]], binary: true }
+            this.GLTFExporter.parse(this.loadedCharacters[this.currentCharacter].model.children[0], 
+                ( gltf ) => innerDownload(filename + '.glb', gltf, 'application/octet-stream' ), // called when the gltf has been generated
+                ( error ) => { console.log( 'An error happened:', error ); }, // called when there is an error in the generation
+                options
+            );
         }
     }
 

@@ -401,24 +401,24 @@ class AnimationRetargeting {
             let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
 
             // Get foot bone global rotation 
-            let footRot = child.getWorldQuaternion(new THREE.Quaternion());
+            let footRot = leftLegEnd.getWorldQuaternion(new THREE.Quaternion());
             // Apply computed rotation to the foot bone global rotation
-            rot = rot.setFromUnitVectors(axis, yAxis)
+            rot = rot.setFromUnitVectors(axis, xAxis)
             leftLegBaseDir.applyQuaternion(rot);
-            footRot = footRot.multiply(rot);
+            footRot.premultiply(rot);
             
-            if (child.parent) {
-                let parent = child.parent;
+            if (leftLegEnd.parent) {
+                let parent = leftLegEnd.parent;
                 let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
                 // Convert new spine bone global rotation to local rotation and set to the bone
-                child.quaternion.copy(footRot.multiply(footParentRot.invert()));
+                leftLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
             }
             else {
-                child.quaternion.copy(footRot);
+                leftLegEnd.quaternion.copy(footRot);
             }
             // Update bone matrix and children matrices
-            child.updateMatrix();
-            child.updateMatrixWorld(true, true);
+            leftLegEnd.updateMatrix();
+            leftLegEnd.updateMatrixWorld(true, true);
         }
 
         // Check if right leg is extended
@@ -471,24 +471,24 @@ class AnimationRetargeting {
             let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
 
             // Get foot bone global rotation 
-            let footRot = child.getWorldQuaternion(new THREE.Quaternion());
+            let footRot = rightLegEnd.getWorldQuaternion(new THREE.Quaternion());
             // Apply computed rotation to the foot bone global rotation
-            rot = rot.setFromUnitVectors(axis, yAxis)
+            rot = rot.setFromUnitVectors(axis, xAxis)
             rightLegBaseDir.applyQuaternion(rot);
-            footRot = footRot.multiply(rot);
+            footRot.premultiply(rot);
             
-            if (child.parent) {
-                let parent = child.parent;
+            if (rightLegEnd.parent) {
+                let parent = rightLegEnd.parent;
                 let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
                 // Convert new spine bone global rotation to local rotation and set to the bone
-                child.quaternion.copy(footRot.multiply(footParentRot.invert()));
+                rightLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
             }
             else {
-                child.quaternion.copy(footRot);
+                rightLegEnd.quaternion.copy(footRot);
             }
             // Update bone matrix and children matrices
-            child.updateMatrix();
-            child.updateMatrixWorld(true, true);
+            rightLegEnd.updateMatrix();
+            rightLegEnd.updateMatrixWorld(true, true);
         }
         //------------------------------------ ARMS COMPLETLY EXTENDED AND ALIGNED TO X-AXIS ------------------------------------//
         //LEFT

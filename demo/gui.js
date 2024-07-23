@@ -159,7 +159,7 @@ class Gui {
             if(this.app.retargeting) {
                 p.addButton(null, "Export animation", () => {
                     if(this.app.mixer && this.app.mixer._actions.length) {  
-                        this.showExportDialog((name, animation) => this.app.exportRetargetAnimation(name, animation))                            
+                        this.showExportDialog((name, animation, format) => this.app.exportRetargetAnimation(name, animation, format))                            
                     }
                     else {
                         LX.popup("No retarget animation.", "Warning!", { timeout: 5000})
@@ -183,28 +183,31 @@ class Gui {
         
             let animation =  this.app.mixer._actions[0]._clip;          
             let name = animation.name;
+            let format = 'bvh';
             p.addText(null, name, (v) => {
                 name = v;
             }, {placeholder: "...", minWidth:"100px"} );
             p.endLine();
-            
-                p.sameLine(2);
-                p.addButton("", options.accept || "OK", (v, e) => { 
-                    e.stopPropagation();
-                    if(options.required && value === '') {
-    
-                        text += text.includes("You must fill the input text.") ? "": "\nYou must fill the input text.";
-                        dialog.close() ;
-                    }else {
-    
-                        if(callback) {
-                            callback(name, animation);
-                        }
-                        dialog.close() ;
+            p.addDropdown("Format", ["bvh", "glb"], format, (v) => {
+                format = v;
+            })
+            p.sameLine(2);
+            p.addButton("", options.accept || "OK", (v, e) => { 
+                e.stopPropagation();
+                if(options.required && value === '') {
+
+                    text += text.includes("You must fill the input text.") ? "": "\nYou must fill the input text.";
+                    dialog.close() ;
+                }
+                else {
+                    if(callback) {
+                        callback(name, animation, format);
                     }
-                    
-                }, { buttonClass: "accept" });
-                p.addButton("", "Cancel", () => {if(options.on_cancel) options.on_cancel(); dialog.close();} );
+                    dialog.close() ;
+                }
+                
+            }, { buttonClass: "accept" });
+            p.addButton("", "Cancel", () => {if(options.on_cancel) options.on_cancel(); dialog.close();} );
                 
         }, options);
 
