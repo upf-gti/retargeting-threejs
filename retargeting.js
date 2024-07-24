@@ -131,10 +131,7 @@ class AnimationRetargeting {
     cloneRawSkeleton( skeleton, poseMode, embedWorld = false ){
         let bones = skeleton.bones;
         if(poseMode == AnimationRetargeting.BindPoseModes.TPOSE) {
-            skeleton.pose();  
-            // skeleton = this.applyTPose(skeleton, skeleton == this.trgSkeleton);
-            // skeleton.calculateInverses();
-            // skeleton.update();
+            skeleton.pose();            
         }
         let resultBones = new Array( bones.length );
         let parentIndices = new Int16Array( bones.length );
