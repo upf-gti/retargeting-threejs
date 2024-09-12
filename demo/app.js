@@ -311,7 +311,7 @@ class App {
                 model, skeleton, animations, skeletonHelper
             }
             
-            this.onLoadAvatar(model, skeleton);
+            this.onLoadAvatar(model, avatarName);
             if (callback) {
                 callback(animations);
             }
@@ -347,10 +347,10 @@ class App {
         this.scene.getObjectByName("Grid").visible = visibility;
     }
 
-    onLoadAvatar(newAvatar, skeleton){      
+    onLoadAvatar(newAvatar, name){      
         // Create mixer for animation
         const mixer = new THREE.AnimationMixer(newAvatar);  
-        this.loadedCharacters[newAvatar.name].mixer = mixer;
+        this.loadedCharacters[name].mixer = mixer;
     }
 
     onChangeAvatar(avatarName) {
@@ -408,7 +408,7 @@ class App {
             animationData.blendshapesAnim.clip.name = "faceAnimation";       
             faceAnimation = animationData.blendshapesAnim.clip;
         }
-        
+
         this.loadedAnimations[name] = {
             name: name,
             animation: bodyAnimation ?? new THREE.AnimationClip( "bodyAnimation", -1, [] ),
@@ -420,6 +420,7 @@ class App {
         let boneContainer = new THREE.Group();
         boneContainer.add( skeleton.bones[0] );
         boneContainer.position.x = -1;
+        boneContainer.name = "Armature";
         this.scene.add( boneContainer );
         let skeletonHelper = new THREE.SkeletonHelper(boneContainer);
         skeletonHelper.name = name;
@@ -429,7 +430,7 @@ class App {
         this.loadedCharacters[name] ={
             model: skeletonHelper, skeleton, animations: [this.loadedAnimations[name].animation]
         }
-        this.onLoadAvatar(skeletonHelper, skeleton);
+        this.onLoadAvatar(skeletonHelper, name);
         if (callback) {
             callback(this.loadedCharacters[name].animations);
         }

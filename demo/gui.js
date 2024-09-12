@@ -94,7 +94,10 @@ class Gui {
                 p.clear();           
                 this.panelTransform.attach( this.skeletonPanel)         
                 if(itemSelected) {
-                    let root = character.model.getObjectByName(itemSelected);
+                    let root = character.model.name == itemSelected ? character.model : character.model.getObjectByName(itemSelected);
+                    if(!root) {
+                        root = character.skeleton.bones[0].parent.getObjectByName(itemSelected)
+                    }
                     p.addVector3("Position", [root.position.x, root.position.y, root.position.z], (value, event) => {
                         root.position.set(value[0], value[1], value[2]);
                     }, {step:0.01});
@@ -475,20 +478,25 @@ class Gui {
 
     createSkeletonPanel(panel, skeleton, type, force) {
         const rootBone = skeleton.bones[0].parent ?? skeleton.bones[0];
-        const parent = rootBone.parent;
+        let parent = rootBone.parent;
+        if(parent && parent.type == "Scene") {
+            parent = null;
+        }
         let itemSelected = "";
         let sceneTree = {};
 
         if(type == 'source') {
-            itemSelected = this.srcItemSelected = this.srcItemSelected ? this.srcItemSelected : parent.name;
+            // itemSelected = this.srcItemSelected = this.srcItemSelected ? this.srcItemSelected : parent.name;
+            itemSelected = this.srcItemSelected = (parent && parent.name ? parent.name : rootBone.name);
         } 
         else {
-            itemSelected = this.trgItemSelected = this.trgItemSelected ? this.trgItemSelected : parent.name;
+            // itemSelected = this.trgItemSelected = this.trgItemSelected ? this.trgItemSelected : parent.name;
+            itemSelected = this.trgItemSelected = (parent && parent.name ? parent.name : rootBone.name);
         }
         if(force || (type == "source" && !this.srcTree || type == "target" && !this.trgTree)) {
             sceneTree = { 
                 id: parent ? parent.name : rootBone.name,
-                selected: (parent ? parent.name : rootBone.nam) == itemSelected,
+                selected: (parent ? parent.name : rootBone.name) == itemSelected,
                 skipVisibility: true
             };
             let children = [];
