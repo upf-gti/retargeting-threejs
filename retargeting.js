@@ -231,8 +231,8 @@ class AnimationRetargeting {
                 if ( idx < 0 ){ continue; }
                 for(let name in auxBoneMap) {
                     if(srcName.toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase()) || boneMap[ srcName ].toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase())) {
-                        this.srcBoneMap[name] = srcBones[i].name;
-                        this.trgBoneMap[name] = trgBones[i].name;
+                        this.srcBoneMap[name] = srcBones[idx].name;
+                        this.trgBoneMap[name] = trgBones[idx].name;
                         break;
                     }
                 }
