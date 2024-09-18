@@ -63,9 +63,6 @@ class App {
         hemiLight.position.set( 0, 50, 0 );
         this.scene.add( hemiLight );
 
-        const hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
-        this.scene.add( hemiLightHelper );
-
         const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
         dirLight.position.set( - 1, 1.75, 1 );
         dirLight.position.multiplyScalar( 30 );
