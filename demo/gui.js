@@ -154,14 +154,28 @@ class Gui {
             p.sameLine();
             if(this.app.currentSourceCharacter) {
                 p.sameLine();
-
-                let bonemapFile = p.addFile("Bone mapping File (optional)", (v, e) => {
-                    let files = p.widgets["Bone mapping File (optional)"].domEl.children[1].files;
+                p.addComboButtons("Bone mapping", [
+                    {
+                        value: "Auto",
+                        callback: (v, e) => {
+                            this.app.boneMap = null;
+                            this.refresh();
+                        }
+                    },
+                    {
+                        value: "From File",
+                        callback: (v, e) => {
+                            this.fileInput.domEl.classList.remove('hidden');
+                        }
+                    }
+                ], {selected: "Auto"});
+                
+                this.fileInput = p.addFile("File", (v, e) => {
+                    let files = p.widgets["File"].domEl.children[1].files;
                     if(!files.length) {
                         return;
                     }
                     const path = files[0].name.split(".");
-                    const filename = path[0];
                     const extension = path[1];
                     const reader = new FileReader();
                     if (extension == "json" || extension == "txt") { 
@@ -173,7 +187,6 @@ class Gui {
                                 this.app.boneMap = json.boneMapNames;
                                 this.app.srcKeyBones = json.srcKeyBones,
                                 this.app.trgKeyBones = json.trgKeyBones;
-                                // this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, json.boneMapNames);
                             }
                             catch{
                                 alert("It can't be parsed as a JSON!");
@@ -183,10 +196,14 @@ class Gui {
                     else { LX.popup("Only accepts JSON and TXT formats!"); }
                     
                 }, {read: false});
-                
-                p.addButton(null, "Edit bones mapping", () => {
-                    this.showBoneMapping();
-                }, {width: "40px", icon: "fa-solid fa-bone"});
+
+                this.fileInput.domEl.classList.add('hidden');
+
+                if(this.app.boneMap) {
+                    p.addButton(null, "Edit bones mapping", () => {
+                        this.showBoneMapping();
+                    }, {width: "40px", icon: "fa-solid fa-bone"});
+                }
                 p.endLine();
                 
                 const poseModes = ["DEFAULT", "CURRENT", "TPOSE"];
@@ -750,14 +767,11 @@ class Gui {
                 bonesName.push(bones[i].name);
             }
             let i = 0;
-            for (const part in this.app.retargeting.boneMap.nameMap) {
+            for (const part in this.app.boneMap) {
                 if ((i % 2) == 0) panel.sameLine(2);
                 i++;
-                panel.addDropdown(part, bonesName, this.app.retargeting.boneMap.nameMap[part], (value, event) => {
-                    this.app.retargeting.boneMap.nameMap[part] = value;
-                    const srcIdx = findIndexOfBoneByName(this.app.retargeting.srcSkeleton, part);
-                    this.app.retargeting.boneMap.idxMap[srcIdx] = i;
-                    
+                panel.addDropdown(part, bonesName, this.app.boneMap[part], (value, event) => {
+                    this.app.boneMap[part] = value;                    
                 }, {filter: true});
             }
         }, { size: ["80%", "70%"], closable: true, onclose: () => {

@@ -43,7 +43,7 @@ class App {
         this.scene = new THREE.Scene();
         let sceneColor = 0xa0a0a0;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
-        // this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
+        this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
 
         // renderer
         this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -139,6 +139,18 @@ class App {
         
         this.update(delta); 
         this.controls.update();
+        const zoom = this.controls.getDistance();
+        if( zoom > 80) {
+            this.scene.getObjectByName("Grid").visible = false;
+
+            this.scene.fog.near = zoom;
+            this.scene.fog.far = zoom + 100;
+        }
+        else {
+            this.scene.getObjectByName("Grid").visible = true;
+            this.scene.fog.near = 20;
+            this.scene.fog.far = zoom + 50;
+        }
         this.renderer.render( this.scene, this.camera );
     }
 
@@ -380,22 +392,7 @@ class App {
                 model.name = avatarName;
                 
                 let animations = glb.animations;
-                // if(skeleton.bones[0].parent && skeleton.bones[0].parent != model) {
-                //     model.position.copy(skeleton.bones[0].parent.position);
-                //     model.rotation.copy(skeleton.bones[0].parent.rotation);
-                //     model.scale.copy(skeleton.bones[0].parent.scale);
-                //     model.updateWorldMatrix(false, true);
-    
-                //     skeleton.bones[0].parent.position.set(0,0,0);
-                //     skeleton.bones[0].parent.rotation.set(0,0,0);
-                //     skeleton.bones[0].parent.scale.set(1,1,1);
-                //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
-    
-                // }
-                // if(skeleton.bones[0].parent) {
-                //     skeleton.bones[0].parent.matrix.decompose(skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale);
-                //     skeleton.bones[0].updateWorldMatrix(true, true);
-                // }
+
                 if(!skeleton && bones.length) {
                     skeleton = new THREE.Skeleton(bones);
                     for(let i = 0; i < animations.length; i++) {
@@ -656,8 +653,29 @@ class App {
         let srcPoseMode = this.srcPoseMode;
         let trgPoseMode = this.trgPoseMode;
         
+        if(this.srcPoseMode == 2) {
+            srcSkeleton = applyTPose(srcSkeleton, this.srcKeyBones);
+            srcPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
+            var boneContainer = new THREE.Group();
+            boneContainer.add( srcSkeleton.bones[0] );
+            boneContainer.scale.set(0.01,0.01,0.01)
+            this.scene.add( boneContainer );
+            this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
+        }
+        if(this.trgPoseMode == 2) {
+            trgSkeleton = applyTPose(trgSkeleton, this.trgKeyBones);
+            for(let i = 0; i < trgSkeleton.bones.length; i++) {
+                let bone = trgSkeleton.bones[i];
+                target.skeleton.bones[i].position.copy(bone.position);
+                target.skeleton.bones[i].rotation.copy(bone.rotation);
+                target.skeleton.bones[i].scale.copy(bone.scale);
+            }
+            trgPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
+        }
+
         this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap } );         
-        
+        this.boneMap = this.retargeting.boneMap.nameMap;
+
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
             this.sourceMixer.setTime(0.01);
@@ -715,7 +733,7 @@ const app = new App();
 app.init();
 window.app = app;
 
- // ADDON SkeletonHelper
+ // ADDON THREE.SkeletonHelper
 
  THREE.SkeletonHelper.prototype.changeColor = function ( a, b ) {
 
@@ -727,5 +745,7 @@ window.app = app;
            colorArray[i+5] = 156/256;
        }
        this.geometry.attributes.color.array = colorArray;
-       this.material.linewidth = 3;
+       this.material.linewidth = 5;
 }
+
+
