@@ -87,7 +87,8 @@ Only mapped bones are computed
 ```
 - `anim`: THREE.AnimationClip <br> animation to retarget
 
-> [!CAUTION]: Work in progress
+> [!CAUTION]
+> *Work in progress*
 > #### applyTPose
 > Force the skeleton to have a T-pose shape, facing the +Z axis. Only works for humanoid skeletons.
 >``` javascript
