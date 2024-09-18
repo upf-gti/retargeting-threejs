@@ -68,8 +68,6 @@ Enumeration that determines which pose will be used as the retargeting bind pose
 
 - `DEFAULT` or `0`: Uses skeleton's actual bind pose
 - `CURRENT` or `1`: Uses skeleton's current pose
-- `TPOSE` or `2`: Forces the skeleton's current pose to T-pose and uses skeleton's current pose
-
 
 ### Methods 
 
@@ -89,6 +87,12 @@ Only mapped bones are computed
 ```
 - `anim`: THREE.AnimationClip <br> animation to retarget
 
+> [!CAUTION]: Work in progress
+> #### applyTPose
+> Force the skeleton to have a T-pose shape, facing the +Z axis. Only works for humanoid skeletons.
+>``` javascript
+>.applyTpose( skeleton, map ) : THREE.AnimationClip
+>```
 
 ## Usual issues 
 

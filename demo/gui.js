@@ -153,8 +153,54 @@ class Gui {
             }, {nameWidth: "auto"})
             p.sameLine();
             if(this.app.currentSourceCharacter) {
+                p.sameLine();
+
+                let bonemapFile = p.addFile("Bone mapping File (optional)", (v, e) => {
+                    let files = p.widgets["Bone mapping File (optional)"].domEl.children[1].files;
+                    if(!files.length) {
+                        return;
+                    }
+                    const path = files[0].name.split(".");
+                    const filename = path[0];
+                    const extension = path[1];
+                    const reader = new FileReader();
+                    if (extension == "json" || extension == "txt") { 
+                        reader.readAsText(files[0]);                    
+                        
+                        reader.onload = (e) => {
+                            try {
+                                const json = JSON.parse(e.target.result);
+                                this.app.boneMap = json.boneMapNames;
+                                this.app.srcKeyBones = json.srcKeyBones,
+                                this.app.trgKeyBones = json.trgKeyBones;
+                                // this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, json.boneMapNames);
+                            }
+                            catch{
+                                alert("It can't be parsed as a JSON!");
+                            }
+                        }
+                    }
+                    else { LX.popup("Only accepts JSON and TXT formats!"); }
+                    
+                }, {read: false});
+                
+                p.addButton(null, "Edit bones mapping", () => {
+                    this.showBoneMapping();
+                }, {width: "40px", icon: "fa-solid fa-bone"});
+                p.endLine();
+                
+                const poseModes = ["DEFAULT", "CURRENT", "TPOSE"];
+                p.addDropdown("Source reference pose", poseModes, poseModes[this.app.srcPoseMode], (v) => {
+                    this.app.srcPoseMode = poseModes.indexOf(v);                
+                });
+
+                p.addDropdown("Character reference pose", poseModes, poseModes[this.app.trgPoseMode], (v) => {
+                    this.app.trgPoseMode = poseModes.indexOf(v);
+                });
+                
+                p.sameLine();
                 p.addButton(null, "Apply retargeting", () => {
-                    this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms);
+                    this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, this.app.boneMap);
                     this.refresh();
                 }, { width: "200px"})
             }
@@ -239,7 +285,7 @@ class Gui {
                         let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                         
                         if( extension == "glb" || extension == "gltf" ) {
-                            this.app.loadAvatar(modelFilePath, modelRotation, value, (animations) => { 
+                            this.app.loadAvatar(modelFilePath, modelRotation, value, extension, (animations) => { 
                                 this.app.changeSourceAvatar(value);
                                 if(!animations.length) {
                                     LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
@@ -277,7 +323,7 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    this.app.loadAvatar(modelFilePath, modelRotation, value, (animations)=>{ 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, extension,(animations)=>{ 
                         this.app.changeSourceAvatar(value);
                         if(!animations.length) {
                             LX.popup("Avatar loaded without animations.", "Warning!", {position: [ "10px", "50px"], timeout: 5000})
@@ -303,7 +349,7 @@ class Gui {
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
                     if( extension == "glb" || extension == "gltf" ) {
-                        this.app.loadAvatar(modelFilePath, modelRotation, value, (animations) => { 
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, extension, (animations) => { 
                             this.app.changeSourceAvatar(value);
                             avatarsWithAnimations.push({ value: value, src: ""});
                             if(!animations.length) {
@@ -364,14 +410,14 @@ class Gui {
             }
             // upload model
             if (value == "Upload Avatar") {
-                this.uploadAvatar((value) => {
+                this.uploadAvatar((value, extension) => {
                     
                     if ( !this.app.loadedCharacters[value] ) {
                         document.getElementById("loading").style.display = "block";
 
                         let modelFilePath = this.avatarOptions[value][0]; 
                         let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                        this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                        this.app.loadAvatar(modelFilePath, modelRotation, value, extension, ()=>{ 
                             avatars.push({ value: value, src: ""});
                             this.app.changeAvatar(value);
                             document.getElementById("loading").style.display = "none";
@@ -394,7 +440,7 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, extension, ()=>{ 
                         avatars.push({ value: value, src: ""});
                         this.app.changeAvatar(value);
                         // TO  DO: load animations if it has someone
@@ -413,13 +459,13 @@ class Gui {
         });
 
         panel.addButton( null, "Upload Avatar", (v) => {
-            this.uploadAvatar((value) => {
+            this.uploadAvatar((value, extension) => {
                     
                 if ( !this.app.loadedCharacters[value] ) {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    this.app.loadAvatar(modelFilePath, modelRotation, value, ()=>{ 
+                    this.app.loadAvatar(modelFilePath, modelRotation, value, extension, ()=>{ 
                         avatars.push({ value: value, src: ""});
                         this.app.changeAvatar(value);
                         document.getElementById("loading").style.display = "none";
@@ -435,12 +481,6 @@ class Gui {
             });
         } ,{ width: "40px", icon: "fa-solid fa-cloud-arrow-up" } );
         
-        if(this.app.currentSourceCharacter && this.app.currentCharacter && this.app.retargeting) {
-
-            panel.addButton(null, "Edit bones mapping", () => {
-                this.showBoneMapping();
-            }, {width: "40px", icon: "fa-solid fa-bone"});
-        }
         panel.endLine();
         
         if(this.app.currentCharacter) {            
@@ -469,8 +509,12 @@ class Gui {
             this.app.onChangeAnimation(v);
         });
 
-        panel.addButton("", "<i class='fa fa-solid " + (this.app.playing ? "fa-stop'>": "fa-play'>") + "</i>", (v,e) => {
+        panel.addButton("", "<i class='fa fa-solid " + (this.app.playing ? "fa-pause'>": "fa-play'>") + "</i>", (v,e) => {
             this.app.changePlayState();
+            panel.refresh();
+        }, { width: "40px"});
+        panel.addButton("", "<i class='fa fa-solid fa-stop'>" + "</i>", (v,e) => {
+            this.app.stopAnimation();
             panel.refresh();
         }, { width: "40px"});
         panel.endLine(); 
@@ -622,13 +666,13 @@ class Gui {
                 const filename = path[0];
                 extension = path[1];
                 const reader = new FileReader();
-                if (extension == "glb" || extension == "gltf" || isSource && (extension == "bvh" || extension == "bvhe")) { 
+                if (extension == "glb" || extension == "gltf" || extension == "fbx" || isSource && (extension == "bvh" || extension == "bvhe")) { 
                     model = v;
                     if(!name) {
                         name = filename;
                         nameWidget.set(name)
                     }
-                    if(extension == "glb" || extension == "gltf") {
+                    if(extension == "glb" || extension == "gltf" || extension == "fbx") {
                         reader.readAsDataURL(files[0]);
                     }
                     else {
@@ -736,3 +780,198 @@ function findIndexOfBoneByName( skeleton, name ){
 }
 
 export {Gui}
+
+class IEvent {
+    constructor(name, value, domEvent) {
+      this.name = name;
+      this.value = value;
+      this.domEvent = domEvent;
+    }
+  }
+
+LX.Panel.prototype.addDropdown = function ( name, values, value, callback, options = {} ) {
+
+    let widget = this.create_widget(name, LX.Widget.DROPDOWN, options);
+    widget.onGetValue = () => {
+        return element.querySelector("li.selected").getAttribute('value');
+    };
+    widget.onSetValue = ( newValue, skipCallback ) => {
+        let btn = element.querySelector(".lexwidgetname .lexicon");
+        if(btn) btn.style.display = (newValue != wValue.iValue ? "block" : "none");
+        value = newValue;
+        list.querySelectorAll('li').forEach( e => { if( e.getAttribute('value') == value ) e.click() } );
+        if( !skipCallback ) this._trigger( new IEvent(name, value, null), callback ); 
+    };
+
+    let element = widget.domEl;
+    let that = this;
+
+    // Add reset functionality
+    if(widget.name && !(options.skipReset ?? false))
+    {
+        LX.Panel._add_reset_property(element.domName, function() {
+            value = wValue.iValue;
+            list.querySelectorAll('li').forEach( e => { if( e.getAttribute('value') == value ) e.click() } );
+            this.style.display = "none";
+        });
+    }
+
+    let container = document.createElement('div');
+    container.className = "lexdropdown";
+    container.style.width = options.inputWidth || "calc( 100% - " + LX.DEFAULT_NAME_WIDTH + ")";
+    
+    // Add widget value
+    let wValue = document.createElement('div');
+    wValue.className = "lexdropdown lexoption";
+    wValue.name = name;
+    wValue.iValue = value;
+
+    // Add dropdown widget button  
+    let buttonName = value;
+    buttonName += "<a class='fa-solid fa-angle-down' style='float:right; margin-right: 3px;'></a>";
+
+    this.queue(container);
+
+    let selectedOption = this.addButton(null, buttonName, (value, event) => {
+        if( list.unfocus_event ) {
+            delete list.unfocus_event;
+            return;
+        }
+        element.querySelector(".lexoptions").style.top = (that.root.parentElement.offsetTop + selectedOption.offsetTop + selectedOption.offsetHeight - that.root.scrollTop) + 'px';
+        element.querySelector(".lexoptions").style.width = (event.currentTarget.clientWidth) + 'px';
+        element.querySelector(".lexoptions").toggleAttribute('hidden');
+        list.focus();
+    }, { buttonClass: 'array', skipInlineCount: true });
+
+    this.clearQueue();
+
+    selectedOption.style.width = "100%";   
+
+    selectedOption.refresh = (v) => {
+        if(selectedOption.querySelector("span").innerText == "")
+            selectedOption.querySelector("span").innerText = v;
+        else
+            selectedOption.querySelector("span").innerHTML = selectedOption.querySelector("span").innerHTML.replaceAll(selectedOption.querySelector("span").innerText, v); 
+    }
+
+    // Add dropdown options container
+    let list = document.createElement( 'ul' );
+    list.tabIndex = -1;
+    list.className = "lexoptions";
+    list.hidden = true;
+
+    list.addEventListener( 'focusout', function( e ) {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        if(e.relatedTarget === selectedOption.querySelector( 'button' )) {
+            this.unfocus_event = true;
+            setTimeout( () => delete this.unfocus_event, 200 );
+        } else if ( e.relatedTarget && e.relatedTarget.tagName == "INPUT" ) {
+            return;
+        }else if ( e.target.id == 'input-filter' ) {
+            return;
+        }
+        this.toggleAttribute( 'hidden', true );
+    });
+
+    // Add filter options
+    let filter = null;
+    if(options.filter ?? false)
+        filter = this._addFilter("Search option", {container: list, callback: this._search_options.bind(list, values)});
+
+    // Create option list to empty it easily..
+    const list_options = document.createElement('span');
+    list.appendChild(list_options);
+    
+    if( filter ) {
+        list.prepend(filter);
+        list_options.style.height = "calc(100% - 25px)";
+
+        filter.addEventListener('focusout', function(e) {
+            if (e.relatedTarget && e.relatedTarget.tagName == "UL" && e.relatedTarget.classList.contains("lexoptions"))
+                return;
+            list.toggleAttribute('hidden', true);
+        });
+    }
+
+    // Add dropdown options list
+    list.refresh = (options) => {
+
+        // Empty list
+        list_options.innerHTML = "";
+
+        for(let i = 0; i < options.length; i++)
+        {
+            let iValue = options[i];
+            let li = document.createElement('li');
+            let option = document.createElement('div');
+            option.className = "option";
+            li.appendChild(option);
+            li.addEventListener("click", (e) => {
+                element.querySelector(".lexoptions").toggleAttribute('hidden', true);
+                const currentSelected = element.querySelector(".lexoptions .selected");
+                if(currentSelected) currentSelected.classList.remove("selected");
+                value = e.currentTarget.getAttribute("value");
+                e.currentTarget.toggleAttribute('hidden', false);
+                e.currentTarget.classList.add("selected");
+                selectedOption.refresh(value);
+
+                let btn = element.querySelector(".lexwidgetname .lexicon");
+                if(btn) btn.style.display = (value != wValue.iValue ? "block" : "none");
+                that._trigger( new IEvent(name, value, null), callback ); 
+
+                // Reset filter
+                if(filter)
+                {
+                    filter.querySelector('input').value = "";
+                    this._search_options.bind(list, values, "")();
+                }
+            });
+
+            // Add string option
+            if( iValue.constructor != Object ) {
+                option.style.flexDirection = 'unset';
+                option.innerHTML = "</a><span>" + iValue + "</span><a class='fa-solid fa-check'>";
+                option.value = iValue;
+                li.setAttribute("value", iValue);
+                li.className = "lexdropdownitem";
+                if( i == (options.length - 1) ) li.className += " last";
+                if(iValue == value) {
+                    li.classList.add("selected");
+                    wValue.innerHTML = iValue;
+                }
+            }
+            else {
+                // Add image option
+                let img = document.createElement("img");
+                img.src = iValue.src;
+                li.setAttribute("value", iValue.value);
+                li.className = "lexlistitem";
+                option.innerText = iValue.value;
+                option.className += " media";
+                option.prepend(img);
+
+                option.setAttribute("value", iValue.value);
+                option.setAttribute("data-index", i);
+                option.setAttribute("data-src", iValue.src);
+                option.setAttribute("title", iValue.value);
+                if(value == iValue.value)
+                    li.classList.add("selected");
+            }      
+            list_options.appendChild(li);
+        }
+    }
+
+    list.refresh(values);
+
+    container.appendChild(list);
+    element.appendChild(container);
+
+    // Remove branch padding and margins
+    if(!widget.name) {
+        element.className += " noname";
+        container.style.width = "100%";
+    }
+
+    return widget;
+}

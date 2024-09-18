@@ -10,7 +10,7 @@ class AnimationRetargeting {
     * @CURRENT Uses skeleton's current pose
     * @TPOSE Forces the skeleton's current pose to T-pose and uses skeleton's current pose
     */
-    static BindPoseModes = { DEFAULT : 0, CURRENT: 1, TPOSE : 2}
+    static BindPoseModes = { DEFAULT : 0, CURRENT: 1}
     static boneMap = {
         "LEye":           "lefteye",
         "REye":           "righteye",
@@ -91,8 +91,7 @@ class AnimationRetargeting {
      * @param options.trgEmbedWorldTransforms Same as srcEmbedWorldTransforms but for the target avatar
      * @param options.boneNameMap String-to-string mapping between src and trg through bone names. Only supports one-to-one mapping
      */
-    constructor( srcSkeleton, trgSkeleton, options = null ){
-        if (!options){ options = {}; }
+    constructor( srcSkeleton, trgSkeleton, options = {} ){
 
         this.srcSkeleton = srcSkeleton; // original ref
         if ( !srcSkeleton.boneInverses ){ // find its skeleton
@@ -111,7 +110,7 @@ class AnimationRetargeting {
         this.trgBindPose = this.cloneRawSkeleton( this.trgSkeleton, options.trgPoseMode, options.trgEmbedWorldTransforms ); // returns pure skeleton, without any object model applied
 
         this.precomputedQuats = this.precomputeRetargetingQuats();
-        this.precomputedPosition = this.precomputeRetargetingPosition();
+        this.proportionRatio = this.computeProportionRatio(); // returns an aproximate ratio of lengths between source skeleton and target skeleton
     }
 
     /**
@@ -130,9 +129,7 @@ class AnimationRetargeting {
      */
     cloneRawSkeleton( skeleton, poseMode, embedWorld = false ){
         let bones = skeleton.bones;
-        if(poseMode == AnimationRetargeting.BindPoseModes.TPOSE) {
-            skeleton.pose();            
-        }
+       
         let resultBones = new Array( bones.length );
         let parentIndices = new Int16Array( bones.length );
 
@@ -157,16 +154,6 @@ class AnimationRetargeting {
             case AnimationRetargeting.BindPoseModes.CURRENT: 
                 resultSkeleton = new THREE.Skeleton( resultBones ); // will automatically compute the inverses from the matrixWorld of each bone               
                 
-                break;
-            case AnimationRetargeting.BindPoseModes.TPOSE:
-                {
-                    // Force bind pose as T-pose
-                    resultSkeleton = new THREE.Skeleton( resultBones );
-                    resultSkeleton.pose();  
-                    resultSkeleton = this.applyTPose(resultSkeleton, skeleton == this.trgSkeleton ? this.trgBoneMap : this.srcBoneMap);
-                    resultSkeleton.calculateInverses();
-                    resultSkeleton.update();  
-                }
                 break;
             default:
                 let boneInverses = new Array( skeleton.boneInverses.length );
@@ -229,13 +216,6 @@ class AnimationRetargeting {
             for ( let srcName in boneMap ){
                 let idx = findIndexOfBoneByName( srcSkeleton, srcName );    
                 if ( idx < 0 ){ continue; }
-                for(let name in auxBoneMap) {
-                    if(srcName.toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase()) || boneMap[ srcName ].toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase())) {
-                        this.srcBoneMap[name] = srcBones[idx].name;
-                        this.trgBoneMap[name] = trgBones[idx].name;
-                        break;
-                    }
-                }
                 let trgIdx = findIndexOfBoneByName( trgSkeleton, boneMap[ srcName ] ); // will return either a valid index or -1
                 result.idxMap[ idx ] = trgIdx;
                 result.nameMap[ srcName ] = boneMap[ srcName ];
@@ -276,317 +256,23 @@ class AnimationRetargeting {
     }
 
     /**
-     * Apply a T-pose shape to the passed skeleton.     
-     * @param {THREE.Skeleton} skeleton 
-     * @param {Object} map 
-     */
-    applyTPose(skeleton, map) {
-      
-        // Check if spine is extended
-        let spineChild = skeleton.getBoneByName(map.ShouldersUnion);
-        let spineParent = spineChild.parent; 
-        let parent = spineParent.parent;
-        while(parent && parent.isBone) {
-            let pos = spineParent.getWorldPosition(new THREE.Vector3());
-            let parentPos = parent.getWorldPosition(new THREE.Vector3());  
-            // Compute direction (parent-to-child)
-            let dir = new THREE.Vector3(); 
-            dir.subVectors(pos, parentPos).normalize();
-            this.alignBoneToAxis(spineParent, dir);
-            spineChild = spineChild.parent;
-            spineParent = spineParent.parent; 
-            parent = spineParent.parent;
-        }
-        
-        //------------------------------------ LOOK AT Z-AXIS ------------------------------------//
-        // Check if the skeleton is oriented in the +Z using the plane fromed by leftArm and spine
-        let leftBaseLeg = skeleton.getBoneByName(map.LUpLeg); // left up leg
-        let hips = leftBaseLeg.parent; // hips
-        
-        let leftBaseLegPos = leftBaseLeg.getWorldPosition(new THREE.Vector3());
-        let hipsPos = hips.getWorldPosition(new THREE.Vector3());        // new THREE.Vector3().setFromMatrixPosition(hips.matrixWorld); // BEST PERFORMANCE
-
-        // Compute up leg direciton
-        let lefLegDir = new THREE.Vector3();
-        lefLegDir.subVectors(leftBaseLegPos, hipsPos).normalize();
-
-        const spineBase = skeleton.getBoneByName(map.BelowStomach); // spine
-        const spineBasePos = spineBase.getWorldPosition(new THREE.Vector3());
-        
-        // Compute spine direction
-        let spineDir = new THREE.Vector3();
-        let spineDirO = new THREE.Vector3();
-        spineDirO.subVectors(spineBasePos, hipsPos);
-        spineDir.subVectors(spineBasePos, hipsPos).normalize();
-        
-        // Compute perpendicular axis between left up and hips-spine
-        let axis = new THREE.Vector3();        
-        axis.crossVectors(lefLegDir, spineDir).normalize();
-
-        let zAxis = new THREE.Vector3(0, 0, 1);
-        // Compute angle (rad) between perpendicular axis and z-axis
-        let angle = (zAxis).angleTo(axis);
-       
-        if(Math.abs(angle) > 0.001) {
-            let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
-
-            // Get spine bone global rotation 
-            let hipsRot = hips.getWorldQuaternion(new THREE.Quaternion());
-            // Apply computed rotation to the spine bone global rotation
-            rot = rot.setFromUnitVectors(axis, zAxis)
-            spineDirO.applyQuaternion(rot);
-            hipsRot = hipsRot.multiply(rot);
-            
-            if (hips.parent) {
-                let parent = hips.parent;
-                let hipsParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
-                // Convert new spine bone global rotation to local rotation and set to the bone
-                hips.quaternion.copy(hipsRot.multiply(hipsParentRot.invert()));
-                let hipsParentPos = parent.getWorldPosition(new THREE.Vector3());
-
-                hips.position.copy(spineDirO.sub(hipsParentPos));
-
-            }
-            else {
-                hips.quaternion.copy(hipsRot);
-                hips.position.copy(spineDirO);
-            }
-            // Update bone matrix and children matrices
-            hips.updateMatrix();
-            hips.updateMatrixWorld(true, true);
-        }
-        // Check if spine follows +Y axis
-        let yAxis = new THREE.Vector3(0, 1, 0);
-        this.alignBoneToAxis(hips, yAxis);
-
-        //------------------------------------ LEGS ALIGNED TO Y-AXIS ------------------------------------//
-        // Check if left leg is extended
-        let leftLegEnd = skeleton.getBoneByName(map.LFoot); // foot
-        let leftLegBase = leftLegEnd.parent; // knee
-        parent = leftLegBase.parent; // up-leg
-        
-        let leftLegBasePos = leftLegBase.getWorldPosition(new THREE.Vector3());
-        let parentPos = parent.getWorldPosition(new THREE.Vector3());  
-
-        // Compute up leg direction (up-leg-to-knee)
-        let leftLegBaseDir = new THREE.Vector3(); 
-        leftLegBaseDir.subVectors(leftLegBasePos, parentPos).normalize();
-        this.alignBoneToAxis(leftLegBase, leftLegBaseDir);
-
-        // Check if left leg follow the -Y axis
-        yAxis = new THREE.Vector3(0, -1, 0);
-        leftLegBase = skeleton.getBoneByName(map.LLeg);
-        leftLegEnd = skeleton.getBoneByName(map.LFoot);
-
-        this.alignBoneToAxis(parent, yAxis);
-        
-        // Compute perpendicular axis between left leg and left foot
-        leftLegBasePos = leftLegEnd.getWorldPosition(new THREE.Vector3());
-        let child = leftLegEnd.children[0].children[0];
-        let childPos = child.getWorldPosition(new THREE.Vector3());  
-
-        // Compute leg direction (foot-to-footend)
-        leftLegBaseDir.subVectors(childPos, leftLegBasePos).normalize();
-        
-        axis.crossVectors(leftLegBaseDir, yAxis).normalize();
-        let xAxis = new THREE.Vector3(1, 0, 0);
-
-        // Compute angle (rad) between perpendicular axis and x-axis
-        angle = (xAxis).angleTo(axis);
-        
-        if(Math.abs(angle) > 0.001) {
-            let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
-
-            // Get foot bone global rotation 
-            let footRot = leftLegEnd.getWorldQuaternion(new THREE.Quaternion());
-            // Apply computed rotation to the foot bone global rotation
-            rot = rot.setFromUnitVectors(axis, xAxis)
-            leftLegBaseDir.applyQuaternion(rot);
-            footRot.premultiply(rot);
-            
-            if (leftLegEnd.parent) {
-                let parent = leftLegEnd.parent;
-                let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
-                // Convert new spine bone global rotation to local rotation and set to the bone
-                leftLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
-            }
-            else {
-                leftLegEnd.quaternion.copy(footRot);
-            }
-            // Update bone matrix and children matrices
-            leftLegEnd.updateMatrix();
-            leftLegEnd.updateMatrixWorld(true, true);
+    * Computes an aproximate ratio of lengths between source skeleton and target skeleton
+    */
+    computeProportionRatio(){
+        let srcLength = 0;        
+        // Compute source sum of bone lengths
+        for(let i = 1; i < this.srcBindPose.bones.length; i++) {
+            let dist = this.srcBindPose.bones[i].getWorldPosition(new THREE.Vector3()).distanceTo(this.srcBindPose.bones[i].parent.getWorldPosition(new THREE.Vector3()))
+            srcLength += dist;
         }
 
-        // Check if right leg is extended
-        let rightLegEnd = skeleton.getBoneByName(map.RFoot); // foot
-        let rightLegBase = rightLegEnd.parent; // knee
-        parent = rightLegBase.parent; // up-leg
-        
-        let rightLegBasePos = rightLegBase.getWorldPosition(new THREE.Vector3());
-        parentPos = parent.getWorldPosition(new THREE.Vector3());  
-
-        // Compute up leg direction (up-leg-to-knee)
-        let rightLegBaseDir = new THREE.Vector3(); 
-        rightLegBaseDir.subVectors(rightLegBasePos, parentPos).normalize();
-        this.alignBoneToAxis(rightLegBase, rightLegBaseDir);
-
-        // Check if right leg follow the -Y axis
-        rightLegBase = skeleton.getBoneByName(map.RLeg);
-        rightLegEnd = skeleton.getBoneByName(map.RFoot);
-
-        this.alignBoneToAxis(parent, yAxis);
-               
-        // child = rightLegEnd;
-        // parent = rightLegBase;
-        // while(child && child.isBone && child.children.length) {
-        //     let pos = parent.getWorldPosition(new THREE.Vector3());
-        //     let parentPos = parent.parent.getWorldPosition(new THREE.Vector3());  
-        //     // Compute direction (parent-to-child)
-        //     let dir = new THREE.Vector3(); 
-        //     dir.subVectors(pos, parentPos).normalize();
-        //     this.alignBoneToAxis(child, dir);
-        //     parent = child;             
-        //     child = child.children[0];
-        // }
-
-        // Compute perpendicular axis between right leg and right foot
-        rightLegBasePos = rightLegEnd.getWorldPosition(new THREE.Vector3());
-        child = rightLegEnd.children[0].children[0];
-        childPos = child.getWorldPosition(new THREE.Vector3());  
-
-        // Compute leg direction (foot-to-footend)
-        rightLegBaseDir.subVectors(childPos, rightLegBasePos).normalize();
-        
-        axis.crossVectors(rightLegBaseDir, yAxis).normalize();
-        xAxis = new THREE.Vector3(1, 0, 0);
-
-        // Compute angle (rad) between perpendicular axis and x-axis
-        angle = (xAxis).angleTo(axis);
-        
-        if(Math.abs(angle) > 0.001) {
-            let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
-
-            // Get foot bone global rotation 
-            let footRot = rightLegEnd.getWorldQuaternion(new THREE.Quaternion());
-            // Apply computed rotation to the foot bone global rotation
-            rot = rot.setFromUnitVectors(axis, xAxis)
-            rightLegBaseDir.applyQuaternion(rot);
-            footRot.premultiply(rot);
-            
-            if (rightLegEnd.parent) {
-                let parent = rightLegEnd.parent;
-                let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
-                // Convert new spine bone global rotation to local rotation and set to the bone
-                rightLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
-            }
-            else {
-                rightLegEnd.quaternion.copy(footRot);
-            }
-            // Update bone matrix and children matrices
-            rightLegEnd.updateMatrix();
-            rightLegEnd.updateMatrixWorld(true, true);
-        }
-        //------------------------------------ ARMS COMPLETLY EXTENDED AND ALIGNED TO X-AXIS ------------------------------------//
-        //LEFT
-        // Check if left arm is extended
-        let leftArmEnd = skeleton.getBoneByName(map.LWrist); // hand
-        let leftArmBase = leftArmEnd.parent; // elbow
-        parent = leftArmBase.parent; // shoulder
-        
-        let leftArmBasePos = leftArmBase.getWorldPosition(new THREE.Vector3());
-        parentPos = parent.getWorldPosition(new THREE.Vector3());  
-
-        // Compute up arm direction (shoulder-to-elbow)
-        let leftArmBaseDir = new THREE.Vector3(); 
-        leftArmBaseDir.subVectors(leftArmBasePos, parentPos).normalize();
-
-        this.alignBoneToAxis(leftArmBase, leftArmBaseDir);
-   
-        // Check if left arm follow the +X axis
-        xAxis = new THREE.Vector3(1, 0, 0);
-        leftArmBase = skeleton.getBoneByName(map.LArm);
-        this.alignBoneToAxis(leftArmBase, xAxis);
-
-        //RIGHT
-       // Check if right arm is extended
-        let rightArmEnd = skeleton.getBoneByName(map.RWrist); // hand
-        let rightArmBase = rightArmEnd.parent; // elbow
-        parent = rightArmBase.parent; // shoulder
-        
-        let rightArmBasePos = rightArmBase.getWorldPosition(new THREE.Vector3());
-        parentPos = parent.getWorldPosition(new THREE.Vector3());  
-
-        // Compute up arm direction (shoulder-to-elbow)
-        let rightArmBaseDir = new THREE.Vector3(); 
-        rightArmBaseDir.subVectors(rightArmBasePos, parentPos).normalize();
-        this.alignBoneToAxis(rightArmBase, rightArmBaseDir);    
-        
-        // Check if right arm follow the -X axis
-        xAxis.set(-1, 0, 0);
-        rightArmBase = skeleton.getBoneByName(map.RArm);
-        this.alignBoneToAxis(rightArmBase, xAxis);
-    
-        return skeleton;
-    }
-
-    /**
-     * Rotate the given bone in order to be aligned with the specified axis
-     * @param {THREE.Bone} bone 
-     * @param {THREE.Vector3} axis 
-     */
-    alignBoneToAxis(bone, axis, child) {
-        bone.updateMatrixWorld(true, true);
-        // Get global positions
-        const bonePos = bone.getWorldPosition(new THREE.Vector3());
-        const childPos = child ? child.getWorldPosition(new THREE.Vector3()) : bone.children[0].getWorldPosition(new THREE.Vector3());        
-        
-        // Compute the unitary direction of the bone from its position and its child position
-        let dir = new THREE.Vector3();
-        dir.subVectors(childPos, bonePos).normalize();
-        
-        // Compute angle (rad) between the bone direction and the axis
-        let angle = (dir).angleTo(axis);
-        if(Math.abs(angle) > 0.001) {
-            // Compute the perpendicular unitary axis between the directions
-            let perpVector = new THREE.Vector3();
-            perpVector.crossVectors(axis, dir).normalize();
-            let rot = new THREE.Quaternion().setFromAxisAngle(perpVector, -angle);
-            // Get bone global rotation 
-            let boneRot = bone.getWorldQuaternion(new THREE.Quaternion());
-            // Apply computed rotation to the bone global rotation
-            boneRot = boneRot.premultiply(rot);
-            
-            if (bone.parent) {
-                let parent = bone.parent;
-                let boneParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
-                // Convert new bone global rotation to local rotation and set to the it
-                bone.quaternion.copy(boneRot.premultiply(boneParentRot.invert()));
-                // Update bone matrix and children matrices
-            }
-            else {
-                bone.quaternion.copy(boneRot);
-            }
-            bone.updateMatrix();
-            bone.updateMatrixWorld(false, true);
-        }
-    }
-
-    precomputeRetargetingPosition(){
-        // Asumes the first bone in the skeleton is the root
-        const srcBoneIndex = 0;    
-        const trgBoneIndex = this.boneMap.idxMap[ srcBoneIndex ] ;    
-        if ( trgBoneIndex < 0 ){
-            return null;
-        } 
-         
-        // Computes the position difference between the roots (Hip bone)
-        const srcPosition = this.srcBindPose.bones[srcBoneIndex].getWorldPosition(new THREE.Vector3());
-        const trgPosition = this.trgBindPose.bones[trgBoneIndex].getWorldPosition(new THREE.Vector3());
-        let offset =  new THREE.Vector3();
-        offset.subVectors(trgPosition, srcPosition);
-
-        return offset;
+        let trgLength = 0;
+        // Compute target sum of bone lengths
+        for(let i = 1; i < this.trgBindPose.bones.length; i++) {
+            let dist = this.trgBindPose.bones[i].getWorldPosition(new THREE.Vector3()).distanceTo(this.trgBindPose.bones[i].parent.getWorldPosition(new THREE.Vector3()))
+            trgLength += dist;
+        }        
+        return trgLength / srcLength
     }
 
     precomputeRetargetingQuats(){
@@ -683,26 +369,7 @@ class AnimationRetargeting {
 
             let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
-            let srcLocalScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
-            // Scale the position with the global scale of the bone (in case the bind pose it's scaled)
-            srcBindPos.divide(srcLocalScale);
-			
-			// Check that the division is not done with a 0
-			srcBindPos.x = Math.abs(srcBindPos.x) <= 1e-6 ? 0.0 : srcBindPos.x;
-			srcBindPos.y = Math.abs(srcBindPos.y) <= 1e-6 ? 0.0 : srcBindPos.y;
-			srcBindPos.z = Math.abs(srcBindPos.z) <= 1e-6 ? 0.0 : srcBindPos.z;
-			let targetPos = trgBindPos;
-			targetPos.x = Math.abs(targetPos.x) <= 1e-6 ? 0.0 : targetPos.x;
-			targetPos.y = Math.abs(targetPos.y) <= 1e-6 ? 0.0 : targetPos.y;
-			targetPos.z = Math.abs(targetPos.z) <= 1e-6 ? 0.0 : targetPos.z;
-
-			// Compute scale = target / source to get the difference of the scale
-			let diffScale = new THREE.Vector3();
-			diffScale.x = srcBindPos.x == 0.0 ? 0.0 : Math.abs(targetPos.x / srcBindPos.x);
-			diffScale.y = srcBindPos.y == 0.0 ? 0.0 : Math.abs(targetPos.y / srcBindPos.y);
-			diffScale.z = srcBindPos.z == 0.0 ? 0.0 : Math.abs(targetPos.z / srcBindPos.z);
 						
-            const offset = this.precomputedPosition;
             let pos = new THREE.Vector3();
 
             for( let i = 0; i < srcValues.length; i+=3 ){
@@ -710,25 +377,21 @@ class AnimationRetargeting {
                 pos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
                 let diffPosition = new THREE.Vector3();
                 diffPosition.subVectors(pos, srcBindPos);
+
                 // Scale the animation difference position with the scale diff between source and target and add it to the the Target Bind Position of the bone
-			    diffPosition.multiplyScalar(diffScale.y).add(trgBindPos);
-                
-                if(this.trgBindPose.bones[this.boneMap.idxMap[ boneIndex ] ].parent) { // Convert to local space
-                    //this.trgBindPose.bones[this.boneMap.idxMap[ boneIndex ] ].worldToLocal(diffPosition); // WRONG
+                diffPosition.multiplyScalar(this.proportionRatio);
+                if(this.srcBindPose.transformsWorldEmbedded) {
+                    diffPosition.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
                 }
+                if(this.trgBindPose.transformsWorldEmbedded) {
+                    diffPosition.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
+                }
+			    diffPosition.add(trgBindPos);
+                
                 trgValues[i]   = diffPosition.x ;
                 trgValues[i+1] = diffPosition.y ;
                 trgValues[i+2] = diffPosition.z ;            
             }
-            // for( let i = 0; i < srcValues.length; i+=3 ){
-                
-            //     pos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
-                
-            //     trgValues[i]   = pos.x + offset.x ;
-            //     trgValues[i+1] = pos.y + offset.y ;
-            //     trgValues[i+2] = pos.z + offset.z ;            
-            // }
-            
         }
         // TODO missing interpolation mode. Assuming always linear. Also check if arrays are copied or referenced
         return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".position", srcTrack.times, trgValues ); 
@@ -792,7 +455,7 @@ class AnimationRetargeting {
         for( let i = 0; i < srcTracks.length; ++i ){
             let t = srcTracks[i];
             let newTrack = null;
-            if ( t.name.endsWith( ".position" ) ){ newTrack = this.retargetPositionTrack( t ); } // ignore for now
+            if ( t.name.endsWith( ".position" ) && t.name.includes(this.srcSkeleton.bones[0].name) ){ newTrack = this.retargetPositionTrack( t ); } // ignore for now
             else if ( t.name.endsWith( ".quaternion" ) ){ newTrack = this.retargetQuaternionTrack( t ); }
             else if ( t.name.endsWith( ".scale" ) ){ newTrack = this.retargetScaleTrack( t ); } // ignore for now
 
@@ -851,4 +514,348 @@ function forceBindPoseQuats( skeleton, skipRoot = false ){
     }
 }
 
-export { AnimationRetargeting, findIndexOfBone, findIndexOfBoneByName, forceBindPoseQuats };
+/**
+     * Apply a T-pose shape to the passed skeleton.     
+     * @param {THREE.Skeleton} skeleton 
+     * @param {Object} map 
+     */
+function applyTPose(skeleton, map) {
+      
+    let bones = skeleton.bones;
+    skeleton.pose(); 
+    let resultBones = new Array( bones.length );
+    let parentIndices = new Int16Array( bones.length );
+
+    // bones[0].clone( true ); // recursive
+    for( let i = 0; i < bones.length; ++i ){
+        resultBones[i] = bones[i].clone(false);
+        resultBones[i].parent = null;
+    }
+    
+    for( let i = 0; i < bones.length; ++i ){
+        let parentIdx = findIndexOfBone( skeleton, bones[i].parent )
+        if ( parentIdx > -1 ){ resultBones[ parentIdx ].add( resultBones[ i ] ); }
+        
+        parentIndices[i] = parentIdx;
+    }
+
+    resultBones[0].updateWorldMatrix( false, true ); // assume 0 is root. Update all global matrices (root does not have any parent)
+
+    let resultSkeleton = new THREE.Skeleton( resultBones );
+    resultSkeleton.pose(); 
+
+    // Check if spine is extended 
+    let spineChild = resultSkeleton.getBoneByName(map.Stomach);
+    let spineParent = spineChild.parent; 
+    let parent = spineParent.parent;
+    while(parent && parent.isBone) {
+        let pos = spineParent.getWorldPosition(new THREE.Vector3());
+        let parentPos = parent.getWorldPosition(new THREE.Vector3());  
+        // Compute direction (parent-to-child)
+        let dir = new THREE.Vector3(); 
+        dir.subVectors(pos, parentPos).normalize();
+        alignBoneToAxis(spineParent, dir);
+        spineChild = spineChild.parent;
+        spineParent = spineParent.parent; 
+        parent = spineParent.parent;
+    }
+    
+    //------------------------------------ LOOK AT Z-AXIS ------------------------------------//
+    // Check if the resultSkeleton is oriented in the +Z using the plane formed by left up and the hips
+    let leftBaseLeg = resultSkeleton.getBoneByName(map.LUpLeg); // left up leg
+    if(!leftBaseLeg) {
+        return skeleton;
+    }
+    let hips = leftBaseLeg.parent; // hips
+    if(!hips) {
+        return skeleton;
+    }
+    let leftBaseLegPos = leftBaseLeg.getWorldPosition(new THREE.Vector3());
+    let hipsPos = hips.getWorldPosition(new THREE.Vector3());        // new THREE.Vector3().setFromMatrixPosition(hips.matrixWorld); // BEST PERFORMANCE
+
+    // Compute up leg direciton
+    let lefLegDir = new THREE.Vector3();
+    lefLegDir.subVectors(leftBaseLegPos, hipsPos).normalize();
+
+    let spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
+    const spineBasePos = spineBase.getWorldPosition(new THREE.Vector3());
+    
+    // Compute spine direction
+    let spineDir = new THREE.Vector3();
+    let spineDirO = new THREE.Vector3();
+    spineDirO.subVectors(spineBasePos, hipsPos);
+    spineDir.subVectors(spineBasePos, hipsPos).normalize();
+    
+    // Compute perpendicular axis between left up and hips-spine
+    let axis = new THREE.Vector3();        
+    axis.crossVectors(lefLegDir, spineDir).normalize();
+
+    let zAxis = new THREE.Vector3(0, 0, 1);
+    // Compute angle (rad) between perpendicular axis and z-axis
+    let angle = (zAxis).angleTo(axis);
+   
+    if(Math.abs(angle) > 0.001) {
+        let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
+
+        // Get spine bone global rotation 
+        let hipsRot = hips.getWorldQuaternion(new THREE.Quaternion());
+        // Apply computed rotation to the spine bone global rotation
+        rot = rot.setFromUnitVectors(axis, zAxis)
+        spineDirO.applyQuaternion(rot);
+        hipsRot = hipsRot.multiply(rot);
+        
+        if (hips.parent) {
+            let parent = hips.parent;
+            let hipsParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
+            // Convert new spine bone global rotation to local rotation and set to the bone
+            hips.quaternion.copy(hipsRot.multiply(hipsParentRot.invert()));
+            let hipsParentPos = parent.getWorldPosition(new THREE.Vector3());
+
+            hips.position.copy(spineDirO.sub(hipsParentPos));
+
+        }
+        else {
+            hips.quaternion.copy(hipsRot);
+            hips.position.copy(spineDirO);
+        }
+        // Update bone matrix and children matrices
+        hips.updateMatrix();
+        hips.updateMatrixWorld(true, true);
+    }
+    // Check if spine follows +Y axis
+    spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
+    let yAxis = new THREE.Vector3(0, 1, 0);
+    alignBoneToAxis(hips, yAxis, spineBase);
+
+    //------------------------------------ LEGS ALIGNED TO Y-AXIS ------------------------------------//
+    // Check if left leg is extended
+    let leftLegEnd = resultSkeleton.getBoneByName(map.LFoot); // foot
+    if(!leftLegEnd) {
+        return skeleton;
+    }
+    let leftLegBase = leftLegEnd.parent; // knee
+    parent = leftLegBase.parent; // up-leg
+    
+    let leftLegBasePos = leftLegBase.getWorldPosition(new THREE.Vector3());
+    let parentPos = parent.getWorldPosition(new THREE.Vector3());  
+
+    // Compute up leg direction (up-leg-to-knee)
+    let leftLegBaseDir = new THREE.Vector3(); 
+    leftLegBaseDir.subVectors(leftLegBasePos, parentPos).normalize();
+    alignBoneToAxis(leftLegBase, leftLegBaseDir);
+
+    // Check if left leg follow the -Y axis
+    yAxis = new THREE.Vector3(0, -1, 0);
+    leftLegBase = resultSkeleton.getBoneByName(map.LLeg);
+    leftLegEnd = resultSkeleton.getBoneByName(map.LFoot);
+
+    alignBoneToAxis(parent, yAxis);
+    
+    // Compute perpendicular axis between left leg and left foot
+    leftLegBasePos = leftLegEnd.getWorldPosition(new THREE.Vector3());
+    let child = leftLegEnd.children[0].children[0];
+    let childPos = child.getWorldPosition(new THREE.Vector3());  
+
+    // Compute leg direction (foot-to-footend)
+    leftLegBaseDir.subVectors(childPos, leftLegBasePos).normalize();
+    
+    axis.crossVectors(leftLegBaseDir, yAxis).normalize();
+    var xAxis = new THREE.Vector3(1, 0, 0);
+
+    // Compute angle (rad) between perpendicular axis and x-axis
+    angle = (xAxis).angleTo(axis);
+    
+    if(Math.abs(angle) > 0.001) {
+        let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
+
+        // Get foot bone global rotation 
+        let footRot = leftLegEnd.getWorldQuaternion(new THREE.Quaternion());
+        // Apply computed rotation to the foot bone global rotation
+        rot = rot.setFromUnitVectors(axis, xAxis)
+        leftLegBaseDir.applyQuaternion(rot);
+        footRot.premultiply(rot);
+        
+        if (leftLegEnd.parent) {
+            let parent = leftLegEnd.parent;
+            let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
+            // Convert new spine bone global rotation to local rotation and set to the bone
+            leftLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
+        }
+        else {
+            leftLegEnd.quaternion.copy(footRot);
+        }
+        // Update bone matrix and children matrices
+        leftLegEnd.updateMatrix();
+        leftLegEnd.updateMatrixWorld(true, true);
+    }
+
+    // Check if right leg is extended
+    let rightLegEnd = resultSkeleton.getBoneByName(map.RFoot); // foot
+    if(!rightLegEnd) {
+        return skeleton;
+    }
+    let rightLegBase = rightLegEnd.parent; // knee
+    parent = rightLegBase.parent; // up-leg
+    
+    let rightLegBasePos = rightLegBase.getWorldPosition(new THREE.Vector3());
+    parentPos = parent.getWorldPosition(new THREE.Vector3());  
+
+    // Compute up leg direction (up-leg-to-knee)
+    let rightLegBaseDir = new THREE.Vector3(); 
+    rightLegBaseDir.subVectors(rightLegBasePos, parentPos).normalize();
+    alignBoneToAxis(rightLegBase, rightLegBaseDir);
+
+    // Check if right leg follow the -Y axis
+    rightLegBase = resultSkeleton.getBoneByName(map.RLeg);
+    rightLegEnd = resultSkeleton.getBoneByName(map.RFoot);
+
+    alignBoneToAxis(parent, yAxis);
+           
+    // child = rightLegEnd;
+    // parent = rightLegBase;
+    // while(child && child.isBone && child.children.length) {
+    //     let pos = parent.getWorldPosition(new THREE.Vector3());
+    //     let parentPos = parent.parent.getWorldPosition(new THREE.Vector3());  
+    //     // Compute direction (parent-to-child)
+    //     let dir = new THREE.Vector3(); 
+    //     dir.subVectors(pos, parentPos).normalize();
+    //     this.alignBoneToAxis(child, dir);
+    //     parent = child;             
+    //     child = child.children[0];
+    // }
+
+    // Compute perpendicular axis between right leg and right foot
+    rightLegBasePos = rightLegEnd.getWorldPosition(new THREE.Vector3());
+    child = rightLegEnd.children[0].children[0];
+    childPos = child.getWorldPosition(new THREE.Vector3());  
+
+    // Compute leg direction (foot-to-footend)
+    rightLegBaseDir.subVectors(childPos, rightLegBasePos).normalize();
+    
+    axis.crossVectors(rightLegBaseDir, yAxis).normalize();
+    xAxis = new THREE.Vector3(1, 0, 0);
+
+    // Compute angle (rad) between perpendicular axis and x-axis
+    angle = (xAxis).angleTo(axis);
+    
+    if(Math.abs(angle) > 0.001) {
+        let rot = new THREE.Quaternion();//.setFromAxisAngle(yAxis, -angle);
+
+        // Get foot bone global rotation 
+        let footRot = rightLegEnd.getWorldQuaternion(new THREE.Quaternion());
+        // Apply computed rotation to the foot bone global rotation
+        rot = rot.setFromUnitVectors(axis, xAxis)
+        rightLegBaseDir.applyQuaternion(rot);
+        footRot.premultiply(rot);
+        
+        if (rightLegEnd.parent) {
+            let parent = rightLegEnd.parent;
+            let footParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
+            // Convert new spine bone global rotation to local rotation and set to the bone
+            rightLegEnd.quaternion.copy(footRot.premultiply(footParentRot.invert()));
+        }
+        else {
+            rightLegEnd.quaternion.copy(footRot);
+        }
+        // Update bone matrix and children matrices
+        rightLegEnd.updateMatrix();
+        rightLegEnd.updateMatrixWorld(true, true);
+    }
+    //------------------------------------ ARMS COMPLETLY EXTENDED AND ALIGNED TO X-AXIS ------------------------------------//
+    //LEFT
+        
+    // Check if left arm follow the +X axis
+    let lArm = resultSkeleton.getBoneByName(map.LArm).parent;
+    var xAxis = new THREE.Vector3(1, 0, 0);
+    alignBoneToAxis(lArm, xAxis);
+    // Check if left arm is extended
+    let leftEnd = resultSkeleton.getBoneByName(map.LWrist); // hand
+    let leftBase = leftEnd.parent; 
+    parent = leftBase.parent; 
+    let spine = resultSkeleton.getBoneByName(map.ShouldersUnion);
+
+    while(parent != spine) {
+        let pos = leftBase.getWorldPosition(new THREE.Vector3());
+        let parentPos = parent.getWorldPosition(new THREE.Vector3());  
+        // Compute direction (parent-to-child)
+        let dir = new THREE.Vector3(); 
+        dir.subVectors(pos, parentPos).normalize();
+        alignBoneToAxis(leftBase, dir);
+        leftEnd = leftEnd.parent;
+        leftBase = leftBase.parent; 
+        parent = leftBase.parent;
+    }
+
+
+    //RIGHT
+    // Check if right arm follow the -X axis
+   let rArm = resultSkeleton.getBoneByName(map.RArm).parent;
+   var xAxis = new THREE.Vector3(-1, 0, 0);
+   alignBoneToAxis(rArm, xAxis);
+   // Check if right arm is extended
+   let rightEnd = resultSkeleton.getBoneByName(map.RWrist); // hand
+   let rightBase = rightEnd.parent; 
+   parent = rightBase.parent; 
+   spine = resultSkeleton.getBoneByName(map.ShouldersUnion);
+   while(parent != spine) {
+       let pos = rightBase.getWorldPosition(new THREE.Vector3());
+       let parentPos = parent.getWorldPosition(new THREE.Vector3());  
+       // Compute direction (parent-to-child)
+       let dir = new THREE.Vector3(); 
+       dir.subVectors(pos, parentPos).normalize();
+       alignBoneToAxis(rightBase, dir);
+       rightEnd = rightEnd.parent;
+       rightBase = rightBase.parent; 
+       parent = rightBase.parent;
+   }
+
+
+
+    resultSkeleton.calculateInverses();
+    resultSkeleton.update(); 
+    return resultSkeleton;
+}
+
+/**
+ * Rotate the given bone in order to be aligned with the specified axis
+ * @param {THREE.Bone} bone 
+ * @param {THREE.Vector3} axis 
+ */
+function alignBoneToAxis(bone, axis, child) {
+    bone.updateMatrixWorld(true, true);
+    // Get global positions
+    const bonePos = bone.getWorldPosition(new THREE.Vector3());
+    const childPos = child ? child.getWorldPosition(new THREE.Vector3()) : bone.children[0].getWorldPosition(new THREE.Vector3());        
+    
+    // Compute the unitary direction of the bone from its position and its child position
+    let dir = new THREE.Vector3();
+    dir.subVectors(childPos, bonePos).normalize();
+    
+    // Compute angle (rad) between the bone direction and the axis
+    let angle = (dir).angleTo(axis);
+    if(Math.abs(angle) > 0.001) {
+        // Compute the perpendicular unitary axis between the directions
+        let perpVector = new THREE.Vector3();
+        perpVector.crossVectors(axis, dir).normalize();
+        let rot = new THREE.Quaternion().setFromAxisAngle(perpVector, -angle);
+        // Get bone global rotation 
+        let boneRot = bone.getWorldQuaternion(new THREE.Quaternion());
+        // Apply computed rotation to the bone global rotation
+        boneRot = boneRot.premultiply(rot);
+        
+        if (bone.parent) {
+            let parent = bone.parent;
+            let boneParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
+            // Convert new bone global rotation to local rotation and set to the it
+            bone.quaternion.copy(boneRot.premultiply(boneParentRot.invert()));
+            // Update bone matrix and children matrices
+        }
+        else {
+            bone.quaternion.copy(boneRot);
+        }
+        bone.updateMatrix();
+        bone.updateMatrixWorld(false, true);
+    }
+}
+                
+export { AnimationRetargeting, findIndexOfBone, findIndexOfBoneByName, forceBindPoseQuats, applyTPose };

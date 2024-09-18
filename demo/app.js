@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'
 import { BVHLoader } from './BVHeLoader.js';
 import { BVHExporter } from './BVHExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js' 
 import { Gui } from './gui.js'
-import { AnimationRetargeting } from '../retargeting.js'
+import { AnimationRetargeting, applyTPose } from '../retargeting.js'
 
 class App {
     constructor() {
@@ -14,6 +15,7 @@ class App {
         this.clock = new THREE.Clock();
         this.loaderBVH = new BVHLoader();
         this.loaderGLB = new GLTFLoader();
+        this.loaderFBX = new FBXLoader();
         this.GLTFExporter = new GLTFExporter();
         this.currentCharacter = "";
         this.loadedCharacters = {}; // store avatar loadedCharacters
@@ -29,13 +31,19 @@ class App {
         this.showSkeletons = true;
         this.gui = null;
         this.retargeting = null;
+
+        this.srcPoseMode = AnimationRetargeting.BindPoseModes.DEFAULT;
+        this.trgPoseMode = AnimationRetargeting.BindPoseModes.DEFAULT;
+        this.srcEmbeddedTransforms = true;
+        this.trgEmbeddedTransforms = true;
+        this.boneMap = null;
     }
 
     init() {        
         this.scene = new THREE.Scene();
         let sceneColor = 0xa0a0a0;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
-        this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
+        // this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
 
         // renderer
         this.renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -107,12 +115,12 @@ class App {
             showControls = !(urlParams.get('controls') === "false");
         }
         let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", ()=>{
+        this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
             this.changeSourceAvatar( "Woman" );                         
         });
 
         modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", ()=>{
+        this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
             this.gui = new Gui( this ); 
             this.changeAvatar( "ReadyEva" );
             this.animate();
@@ -167,8 +175,6 @@ class App {
         this.onChangeAvatar(avatarName);
         this.retargeting = null;
 
-        if(this.currentSourceCharacter) {
-                 }
         if ( this.gui ){ this.gui.refresh(); }
     }
 
@@ -181,13 +187,11 @@ class App {
         
         this.currentSourceCharacter = avatarName;
         const character =  this.loadedCharacters[this.currentSourceCharacter];
-        //character.model.position.x = -1;
         this.scene.add( character.model ); // add model to scene
         if(character.skeletonHelper) {
             character.skeletonHelper.visible = this.showSkeletons;
             this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
         }
-        //this.changePlayState(this.playing);
         this.sourceMixer = this.loadedCharacters[avatarName].mixer;  
         let animations = character.animations;
         if(animations && animations.length) {
@@ -210,113 +214,210 @@ class App {
         if ( this.gui ){ this.gui.refresh(); }
     }
 
-    loadAvatar( modelFilePath, modelRotation, avatarName, callback = null ) {
-        this.loaderGLB.load( modelFilePath, (glb) => {
-            let model = glb.scene;
-            model.quaternion.premultiply( modelRotation );
-            model.castShadow = true;
-            let skeleton = null;
-            let bones = [];
-            if(avatarName == "Witch") {
-                model.traverse( (object) => {
-                    if ( object.isMesh || object.isSkinnedMesh ) {
-                                          
-                        if(!object.name.includes("Hat"))
-                           object.material.side = THREE.FrontSide;
-                        object.frustumCulled = false;
-                        object.castShadow = true;
-                        object.receiveShadow = true;
-                        if (object.name == "Eyelashes") // eva
-                        object.castShadow = false;
-                        if(object.material.map) 
-                        object.material.map.anisotropy = 16;
-                        if(object.name == "Hair") {
-                            object.material.map = null;
-                            object.material.color.set(0x6D1881);
-                        }
-                        if(object.name.includes("Bottom")) {
-                            object.material.map = null;
-                            object.material.color.set(0x000000);
-                        }
-                        if(object.name.includes("Top")) {
-                            object.material.map = null;
-                            object.material.color.set(0x000000);
-                        }
-                        if(object.name.includes("Shoes")) {
-                            object.material.map = null;
-                            object.material.color.set(0x19A7A3);
-                        }
-                    } else if (object.isBone) {
-                        object.scale.set(1.0, 1.0, 1.0);                    
-                        bones.push(object);
-                    }
-                    if (object.skeleton){
-                        skeleton = object.skeleton; 
-                    }  
-                } );
-            }else{
-                model.traverse( (object) => {
-                    if ( object.isMesh || object.isSkinnedMesh ) {                        
-                        object.material.side = THREE.FrontSide;
-                        object.frustumCulled = false;
-                        object.castShadow = true;
-                        object.receiveShadow = true;
-                        if (object.name == "Eyelashes") // eva
+    loadAvatar( modelFilePath, modelRotation, avatarName, extension, callback = null ) {
+
+        if(extension == "fbx") {
+            this.loaderFBX.load( modelFilePath, (fbx) => {
+                console.log(fbx)
+                let model = fbx;
+                model.quaternion.premultiply( modelRotation );
+                model.castShadow = true;
+                let skeleton = null;
+                let bones = [];
+                if(avatarName == "Witch") {
+                    model.traverse( (object) => {
+                        if ( object.isMesh || object.isSkinnedMesh ) {
+                                              
+                            if(!object.name.includes("Hat"))
+                               object.material.side = THREE.FrontSide;
+                            object.frustumCulled = false;
+                            object.castShadow = true;
+                            object.receiveShadow = true;
+                            if (object.name == "Eyelashes") // eva
                             object.castShadow = false;
-                        if(object.material.map) 
+                            if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                    } else if(object.isBone) {
-                        bones.push(object);
-                    }                               
-                    if (object.skeleton){
-                        skeleton = object.skeleton;                         
-                    }
-                } );
-    
-            }
-
-            if ( avatarName == "Kevin" ){
-                let hair = model.getObjectByName( "Classic_short" );
-                if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
-            }
-                        
-            model.name = avatarName;
-            
-            let animations = glb.animations;
-            // if(skeleton.bones[0].parent && skeleton.bones[0].parent != model) {
-            //     model.position.copy(skeleton.bones[0].parent.position);
-            //     model.rotation.copy(skeleton.bones[0].parent.rotation);
-            //     model.scale.copy(skeleton.bones[0].parent.scale);
-            //     model.updateWorldMatrix(false, true);
-
-            //     skeleton.bones[0].parent.position.set(0,0,0);
-            //     skeleton.bones[0].parent.rotation.set(0,0,0);
-            //     skeleton.bones[0].parent.scale.set(1,1,1);
-            //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
-
-            // }
-            // if(skeleton.bones[0].parent) {
-            //     skeleton.bones[0].parent.matrix.decompose(skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale);
-            //     skeleton.bones[0].updateWorldMatrix(true, true);
-            // }
-            if(!skeleton && bones.length) {
-                skeleton = new THREE.Skeleton(bones);
-                for(let i = 0; i < animations.length; i++) {
-                    this.loadBVHAnimation(avatarName, {skeletonAnim :{skeleton, clip: animations[i]}}, i == (animations.length - 1) ? callback : null)
+                            if(object.name == "Hair") {
+                                object.material.map = null;
+                                object.material.color.set(0x6D1881);
+                            }
+                            if(object.name.includes("Bottom")) {
+                                object.material.map = null;
+                                object.material.color.set(0x000000);
+                            }
+                            if(object.name.includes("Top")) {
+                                object.material.map = null;
+                                object.material.color.set(0x000000);
+                            }
+                            if(object.name.includes("Shoes")) {
+                                object.material.map = null;
+                                object.material.color.set(0x19A7A3);
+                            }
+                        } else if (object.isBone) {
+                            object.scale.set(1.0, 1.0, 1.0);                    
+                            bones.push(object);
+                        }
+                        if (object.skeleton){
+                            skeleton = object.skeleton; 
+                        }  
+                    } );
+                }else{
+                    model.traverse( (object) => {
+                        if ( object.isMesh || object.isSkinnedMesh ) {                        
+                            object.material.side = THREE.FrontSide;
+                            object.frustumCulled = false;
+                            object.castShadow = true;
+                            object.receiveShadow = true;
+                            if (object.name == "Eyelashes") // eva
+                                object.castShadow = false;
+                            if(object.material.map) 
+                                object.material.map.anisotropy = 16;
+                        } else if(object.isBone) {
+                            bones.push(object);
+                        }                               
+                        if (object.skeleton){
+                            skeleton = object.skeleton;                         
+                        }
+                    } );
+        
                 }
-                return;
-            }
-            let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
-            this.loadedCharacters[avatarName] ={
-                model, skeleton, animations, skeletonHelper
-            }
+    
+                if ( avatarName == "Kevin" ){
+                    let hair = model.getObjectByName( "Classic_short" );
+                    if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
+                }
+                            
+                model.name = avatarName;
+                
+                let animations = fbx.animations;
             
-            this.onLoadAvatar(model, avatarName);
-            if (callback) {
-                callback(animations);
-            }
-       
-        });
+                if(!skeleton && bones.length) {
+                    skeleton = new THREE.Skeleton(bones);
+                    for(let i = 0; i < animations.length; i++) {
+                        this.loadBVHAnimation(avatarName, {skeletonAnim :{skeleton, clip: animations[i]}}, i == (animations.length - 1) ? callback : null)
+                    }
+                    return;
+                }
+                let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
+                this.loadedCharacters[avatarName] ={
+                    model, skeleton, animations, skeletonHelper
+                }
+                
+                this.onLoadAvatar(model, avatarName);
+                if (callback) {
+                    callback(animations);
+                }
+           
+            });
+        }
+        else {
+            this.loaderGLB.load( modelFilePath, (glb) => {
+                let model = glb.scene;
+                model.quaternion.premultiply( modelRotation );
+                model.castShadow = true;
+                let skeleton = null;
+                let bones = [];
+                if(avatarName == "Witch") {
+                    model.traverse( (object) => {
+                        if ( object.isMesh || object.isSkinnedMesh ) {
+                                              
+                            if(!object.name.includes("Hat"))
+                               object.material.side = THREE.FrontSide;
+                            object.frustumCulled = false;
+                            object.castShadow = true;
+                            object.receiveShadow = true;
+                            if (object.name == "Eyelashes") // eva
+                            object.castShadow = false;
+                            if(object.material.map) 
+                            object.material.map.anisotropy = 16;
+                            if(object.name == "Hair") {
+                                object.material.map = null;
+                                object.material.color.set(0x6D1881);
+                            }
+                            if(object.name.includes("Bottom")) {
+                                object.material.map = null;
+                                object.material.color.set(0x000000);
+                            }
+                            if(object.name.includes("Top")) {
+                                object.material.map = null;
+                                object.material.color.set(0x000000);
+                            }
+                            if(object.name.includes("Shoes")) {
+                                object.material.map = null;
+                                object.material.color.set(0x19A7A3);
+                            }
+                        } else if (object.isBone) {
+                            object.scale.set(1.0, 1.0, 1.0);                    
+                            bones.push(object);
+                        }
+                        if (object.skeleton){
+                            skeleton = object.skeleton; 
+                        }  
+                    } );
+                }else{
+                    model.traverse( (object) => {
+                        if ( object.isMesh || object.isSkinnedMesh ) {                        
+                            object.material.side = THREE.FrontSide;
+                            object.frustumCulled = false;
+                            object.castShadow = true;
+                            object.receiveShadow = true;
+                            if (object.name == "Eyelashes") // eva
+                                object.castShadow = false;
+                            if(object.material.map) 
+                                object.material.map.anisotropy = 16;
+                        } else if(object.isBone) {
+                            bones.push(object);
+                        }                               
+                        if (object.skeleton){
+                            skeleton = object.skeleton;                         
+                        }
+                    } );
+        
+                }
+    
+                if ( avatarName == "Kevin" ){
+                    let hair = model.getObjectByName( "Classic_short" );
+                    if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
+                }
+                            
+                model.name = avatarName;
+                
+                let animations = glb.animations;
+                // if(skeleton.bones[0].parent && skeleton.bones[0].parent != model) {
+                //     model.position.copy(skeleton.bones[0].parent.position);
+                //     model.rotation.copy(skeleton.bones[0].parent.rotation);
+                //     model.scale.copy(skeleton.bones[0].parent.scale);
+                //     model.updateWorldMatrix(false, true);
+    
+                //     skeleton.bones[0].parent.position.set(0,0,0);
+                //     skeleton.bones[0].parent.rotation.set(0,0,0);
+                //     skeleton.bones[0].parent.scale.set(1,1,1);
+                //     skeleton.bones[0].parent.updateWorldMatrix(false, true);
+    
+                // }
+                // if(skeleton.bones[0].parent) {
+                //     skeleton.bones[0].parent.matrix.decompose(skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale);
+                //     skeleton.bones[0].updateWorldMatrix(true, true);
+                // }
+                if(!skeleton && bones.length) {
+                    skeleton = new THREE.Skeleton(bones);
+                    for(let i = 0; i < animations.length; i++) {
+                        this.loadBVHAnimation(avatarName, {skeletonAnim :{skeleton, clip: animations[i]}}, i == (animations.length - 1) ? callback : null)
+                    }
+                    return;
+                }
+                let skeletonHelper = new THREE.SkeletonHelper(skeleton.bones[0]);
+                this.loadedCharacters[avatarName] ={
+                    model, skeleton, animations, skeletonHelper
+                }
+                
+                this.onLoadAvatar(model, avatarName);
+                if (callback) {
+                    callback(animations);
+                }
+           
+            });
+        }
     }
 
     loadAnimation( modelFilePath, avatarName, callback = null ) {
@@ -327,14 +428,19 @@ class App {
 
     changePlayState(state = !this.playing) {
         this.playing = state;
-        if(this.playing && this.mixer) {
+    }
+
+    stopAnimation() {
+        this.playing = false;
+        if(this.mixer) {
+            this.mixer.update(0);                      
             this.mixer.setTime(0);                      
         }
-        if(this.playing && this.sourceMixer) {
+        if(this.sourceMixer) {
+            this.sourceMixer.update(0);                      
             this.sourceMixer.setTime(0);                      
         }
     }
-
     changeSkeletonsVisibility(visibility) {
         this.showSkeletons = visibility;
         
@@ -375,7 +481,7 @@ class App {
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
         this.sourceMixer.setTime(0);
         this.currentAnimation = animationName;
-        this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
+        // this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
     onWindowResize() {
@@ -544,11 +650,16 @@ class App {
         } 
     }
 
-    applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true) {
+    applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true, boneNameMap = this.boneMap) {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
         
-        this.retargeting = new AnimationRetargeting(source.skeleton, target.model, { srcPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, trgPoseMode: AnimationRetargeting.BindPoseModes.TPOSE, srcEmbedWorldTransforms, trgEmbedWorldTransforms } ); // TO DO: change trgUseCurrentPose param
+        let srcSkeleton = source.skeleton;
+        let trgSkeleton = target.skeleton;
+        let srcPoseMode = this.srcPoseMode;
+        let trgPoseMode = this.trgPoseMode;
+        
+        this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap } );         
         
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
