@@ -100,10 +100,7 @@ class AnimationRetargeting {
         this.trgSkeleton = trgSkeleton; // original ref
         if ( !trgSkeleton.boneInverses ){ // find its skeleton
             trgSkeleton.traverse( (o) => { if( o.isSkinnedMesh ){ this.trgSkeleton = o.skeleton; } } );
-        }
-        
-        this.srcBoneMap = {};
-        this.trgBoneMap = {};
+        }        
 
         this.boneMap = this.computeBoneMap( this.srcSkeleton, this.trgSkeleton, options.boneNameMap ); // { idxMap: [], nameMape:{} }
         this.srcBindPose = this.cloneRawSkeleton( this.srcSkeleton, options.srcPoseMode, options.srcEmbedWorldTransforms ); // returns pure skeleton, without any object model applied 
@@ -161,6 +158,7 @@ class AnimationRetargeting {
                     boneInverses[i] = skeleton.boneInverses[i].clone(); 
                 }
                 resultSkeleton = new THREE.Skeleton( resultBones, boneInverses );
+                resultSkeleton.pose();
                 break;
         }
         
@@ -204,7 +202,6 @@ class AnimationRetargeting {
      * @returns {object} { idxMap: [], nameMape: {} }
      */
     computeBoneMap( srcSkeleton, trgSkeleton, boneMap = null ){
-        const auxBoneMap = AnimationRetargeting.boneMap;
         let srcBones = srcSkeleton.bones;
         let trgBones = trgSkeleton.bones;
         let result = {
@@ -212,7 +209,7 @@ class AnimationRetargeting {
             nameMap: {}
         }
         result.idxMap.fill( -1 ); // default to no map;
-        if ( boneMap ){
+        if ( boneMap ) {
             for ( let srcName in boneMap ){
                 let idx = findIndexOfBoneByName( srcSkeleton, srcName );    
                 if ( idx < 0 ){ continue; }
@@ -220,34 +217,20 @@ class AnimationRetargeting {
                 result.idxMap[ idx ] = trgIdx;
                 result.nameMap[ srcName ] = boneMap[ srcName ];
             }
-        }else{
+        }
+        else {
             // automap
-            let i = 0;
-            let j = 0;
-            for(let name in auxBoneMap) {
-                for( i = 0; i < srcBones.length; ++i ){
-                    let srcName = srcBones[i].name;
-                    if ( typeof( srcName ) !== "string" ){ continue; }
-                    srcName = srcName.toLowerCase().replace( "mixamorig", "" ).replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "" );
-                    if ( srcName.length < 1 ){ continue; }
-                    if(srcName.toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase())) {
-                        this.srcBoneMap[name] = srcBones[i].name;
-                        break;
+            const auxBoneMap = Object.keys(AnimationRetargeting.boneMap);
+            this.srcBoneMap = computeAutoBoneMap( srcSkeleton );
+            this.trgBoneMap = computeAutoBoneMap( trgSkeleton );
+            if(this.srcBoneMap.idxMap.length && this.trgBoneMap.idxMap.length) {
+                for(let i = 0; i < auxBoneMap.length; i++) {           
+                    const name = auxBoneMap[i];
+                    if(this.srcBoneMap.idxMap[i] < 0) {
+                        continue;
                     }
-                }
-                for( j = 0; j < trgBones.length; ++j ){
-                    let trgName = trgBones[j].name;
-                    if ( typeof( trgName ) !== "string" ){ continue; }
-                    trgName = trgName.toLowerCase().replace( "mixamorig", "" ).replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "" );
-                    if ( trgName.length < 1 ){ continue; }
-                    if(trgName.toLowerCase().includes(auxBoneMap[name].toLocaleLowerCase())) {
-                        this.trgBoneMap[name] = trgBones[j].name;
-                        break;
-                    }
-                }
-                if(i < srcBones.length && j < trgBones.length) {
-                    result.idxMap[i] = j;
-                    result.nameMap[ srcBones[i].name ] = trgBones[j].name; 
+                    result.idxMap[this.srcBoneMap.idxMap[i]] = this.trgBoneMap.idxMap[i];
+                    result.nameMap[ this.srcBoneMap.nameMap[name]] = this.trgBoneMap.nameMap[name]; 
                 }
             }
         }
@@ -520,30 +503,13 @@ function forceBindPoseQuats( skeleton, skipRoot = false ){
      * @param {Object} map 
      */
 function applyTPose(skeleton, map) {
-      
-    let bones = skeleton.bones;
-    skeleton.pose(); 
-    let resultBones = new Array( bones.length );
-    let parentIndices = new Int16Array( bones.length );
-
-    // bones[0].clone( true ); // recursive
-    for( let i = 0; i < bones.length; ++i ){
-        resultBones[i] = bones[i].clone(false);
-        resultBones[i].parent = null;
+     
+    if(!map) {
+        map = computeAutoBoneMap(skeleton);
+        map = map.nameMap;
     }
     
-    for( let i = 0; i < bones.length; ++i ){
-        let parentIdx = findIndexOfBone( skeleton, bones[i].parent )
-        if ( parentIdx > -1 ){ resultBones[ parentIdx ].add( resultBones[ i ] ); }
-        
-        parentIndices[i] = parentIdx;
-    }
-
-    resultBones[0].updateWorldMatrix( false, true ); // assume 0 is root. Update all global matrices (root does not have any parent)
-
-    let resultSkeleton = new THREE.Skeleton( resultBones );
-    resultSkeleton.pose(); 
-
+    let resultSkeleton = skeleton;
     // Check if spine is extended 
     let spineChild = resultSkeleton.getBoneByName(map.Stomach);
     let spineParent = spineChild.parent; 
@@ -809,10 +775,8 @@ function applyTPose(skeleton, map) {
        parent = rightBase.parent;
    }
 
-
-
-    resultSkeleton.calculateInverses();
-    resultSkeleton.update(); 
+    // resultSkeleton.calculateInverses();
+    // resultSkeleton.update(); 
     return resultSkeleton;
 }
 
@@ -857,5 +821,38 @@ function alignBoneToAxis(bone, axis, child) {
         bone.updateMatrixWorld(false, true);
     }
 }
-                
-export { AnimationRetargeting, findIndexOfBone, findIndexOfBoneByName, forceBindPoseQuats, applyTPose };
+   
+
+/**
+ * Maps automatically bones from the skeleton to an auxiliar map. 
+ * Given a null bonemap, an automap is performed
+ * @param {THREE.Skeleton} srcSkeleton 
+ * @returns {object} { idxMap: [], nameMape: {} }
+ */
+function computeAutoBoneMap( skeleton ){
+    const auxBoneMap = Object.keys(AnimationRetargeting.boneMap);
+    let bones = skeleton.bones;
+    let result = {
+        idxMap: new Int16Array( auxBoneMap.length ),
+        nameMap: {} 
+    };
+
+    result.idxMap.fill( -1 ); // default to no map;
+    // automap
+    for(let i = 0; i < auxBoneMap.length; i++) {
+        const auxName = auxBoneMap[i];
+        for( let j = 0; j < bones.length; ++j ){
+            let name = bones[j].name;
+            if ( typeof( name ) !== "string" ){ continue; }
+            name = name.toLowerCase().replace( "mixamorig", "" ).replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "" );
+            if ( name.length < 1 ){ continue; }
+            if(name.toLowerCase().includes(auxName.toLocaleLowerCase()) || name.toLowerCase().includes(AnimationRetargeting.boneMap[auxName].toLocaleLowerCase())) {
+                result.nameMap[auxName] = bones[j].name;
+                result.idxMap[i] = j;
+                break;
+            }
+        }                
+    }
+    return result;
+}
+export { AnimationRetargeting, findIndexOfBone, findIndexOfBoneByName, forceBindPoseQuats, applyTPose, computeAutoBoneMap };

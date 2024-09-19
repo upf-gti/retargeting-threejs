@@ -102,8 +102,7 @@ class App {
         this.controls.enabled = true;
         this.controls.update();
 
-        this.renderer.render( this.scene,this.camera );
-        
+        this.renderer.render( this.scene,this.camera );        
 
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
@@ -115,7 +114,7 @@ class App {
         this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
             this.changeSourceAvatar( "Woman" );                         
         });
-
+       
         modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
         this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
             this.gui = new Gui( this ); 
@@ -460,7 +459,7 @@ class App {
         this.currentCharacter = avatarName;
         this.changePlayState(this.playing);
         this.mixer = this.loadedCharacters[avatarName].mixer;  
-        this.bindAnimationToCharacter(this.currentAnimation, avatarName);
+        this.boneMap = null;
         return true;
     }
     
@@ -475,6 +474,13 @@ class App {
         this.sourceMixer.clipAction(this.loadedAnimations[animationName].animation).setEffectiveWeight(1.0).play();
         this.sourceMixer.setTime(0);
         this.currentAnimation = animationName;
+        if(this.retargeting) {
+            
+            this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
+            this.mixer.setTime(0.01);
+            this.mixer.setTime(0);
+        
+        }
         // this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
@@ -635,13 +641,7 @@ class App {
     applyOriginalBindPose(characterName) {
 
         let skeleton = this.loadedCharacters[characterName].skeleton;
-        skeleton.pose();
-        if ( skeleton.bones[0].parent ) {
-
-            skeleton.bones[0].matrix.copy( skeleton.bones[0].parent.matrixWorld ).invert();
-            skeleton.bones[0].matrix.multiply( skeleton.bones[0].matrixWorld );
-            skeleton.bones[0].matrix.decompose( skeleton.bones[0].position, skeleton.bones[0].quaternion, skeleton.bones[0].scale );
-        } 
+        skeleton.pose(); 
     }
 
     applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true, boneNameMap = this.boneMap) {
@@ -656,20 +656,20 @@ class App {
         if(this.srcPoseMode == 2) {
             srcSkeleton = applyTPose(srcSkeleton, this.srcKeyBones);
             srcPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
-            var boneContainer = new THREE.Group();
-            boneContainer.add( srcSkeleton.bones[0] );
-            boneContainer.scale.set(0.01,0.01,0.01)
-            this.scene.add( boneContainer );
-            this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
+            // var boneContainer = new THREE.Group();
+            // boneContainer.add( srcSkeleton.bones[0] );
+            // boneContainer.scale.set(0.01,0.01,0.01)
+            // this.scene.add( boneContainer );
+            // this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
         }
         if(this.trgPoseMode == 2) {
             trgSkeleton = applyTPose(trgSkeleton, this.trgKeyBones);
-            for(let i = 0; i < trgSkeleton.bones.length; i++) {
-                let bone = trgSkeleton.bones[i];
-                target.skeleton.bones[i].position.copy(bone.position);
-                target.skeleton.bones[i].rotation.copy(bone.rotation);
-                target.skeleton.bones[i].scale.copy(bone.scale);
-            }
+            // for(let i = 0; i < trgSkeleton.bones.length; i++) {
+            //     let bone = trgSkeleton.bones[i];
+            //     target.skeleton.bones[i].position.copy(bone.position);
+            //     target.skeleton.bones[i].rotation.copy(bone.rotation);
+            //     target.skeleton.bones[i].scale.copy(bone.scale);
+            // }
             trgPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
         }
 

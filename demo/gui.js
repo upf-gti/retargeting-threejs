@@ -176,7 +176,7 @@ class Gui {
                         return;
                     }
                     const path = files[0].name.split(".");
-                    const extension = path[1];
+                    const extension = path[path.length - 1];
                     const reader = new FileReader();
                     if (extension == "json" || extension == "txt") { 
                         reader.readAsText(files[0]);                    
@@ -340,6 +340,8 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    const path = modelFilePath.split(".");
+                    const extension = path[path.length - 1];
                     this.app.loadAvatar(modelFilePath, modelRotation, value, extension,(animations)=>{ 
                         this.app.changeSourceAvatar(value);
                         if(!animations.length) {
@@ -457,6 +459,9 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
+                    const path = modelFilePath.split(".");
+                    const extension = path[path.length - 1];
+                    
                     this.app.loadAvatar(modelFilePath, modelRotation, value, extension, ()=>{ 
                         avatars.push({ value: value, src: ""});
                         this.app.changeAvatar(value);
