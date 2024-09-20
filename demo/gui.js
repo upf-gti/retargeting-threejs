@@ -136,9 +136,8 @@ class Gui {
         this.panel.refresh = (force = false) =>{
             let p = this.panel;
             this.panel.clear();
-            this.createTargetPanel(this.panel, avatars, force);
             this.createSourcePanel(this.panel, avatarsWithAnimations, force);
-
+            this.createTargetPanel(this.panel, avatars, force);
             
             p.branch("Retargeting")
             p.addCheckbox("Show skeletons", this.app.showSkeletons, (v) => {
@@ -159,6 +158,7 @@ class Gui {
                         value: "Auto",
                         callback: (v, e) => {
                             this.app.boneMap = null;
+                            this.app.autoBoneMap = true;
                             this.refresh();
                         }
                     },
@@ -166,9 +166,13 @@ class Gui {
                         value: "From File",
                         callback: (v, e) => {
                             this.fileInput.domEl.classList.remove('hidden');
+                            if(!this.app.boneMap) {
+                                this.fileInput.domEl.getElementsByTagName('input')[0].click();
+                            }
+                            this.app.autoBoneMap = false;
                         }
                     }
-                ], {selected: "Auto"});
+                ], {selected: this.app.autoBoneMap ? "Auto" : "From File"});
                 
                 this.fileInput = p.addFile("File", (v, e) => {
                     let files = p.widgets["File"].domEl.children[1].files;
@@ -195,7 +199,7 @@ class Gui {
                     }
                     else { LX.popup("Only accepts JSON and TXT formats!"); }
                     
-                }, {read: false});
+                }, {read: false, local:false});
 
                 this.fileInput.domEl.classList.add('hidden');
 
@@ -206,14 +210,14 @@ class Gui {
                 }
                 p.endLine();
                 
-                const poseModes = ["DEFAULT", "CURRENT", "TPOSE"];
+                const poseModes = ["DEFAULT", "CURRENT"];
                 p.addDropdown("Source reference pose", poseModes, poseModes[this.app.srcPoseMode], (v) => {
                     this.app.srcPoseMode = poseModes.indexOf(v);                
-                });
+                }, {nameWidth: "200px"});
 
                 p.addDropdown("Character reference pose", poseModes, poseModes[this.app.trgPoseMode], (v) => {
                     this.app.trgPoseMode = poseModes.indexOf(v);
-                });
+                }, {nameWidth: "200px"});
                 
                 p.sameLine();
                 p.addButton(null, "Apply retargeting", () => {
@@ -409,6 +413,11 @@ class Gui {
                 this.app.applyOriginalBindPose(this.app.currentSourceCharacter);
                 this.refresh();
             });
+            panel.addButton(null, "Convert current pose to T-pose", () => {
+                
+                this.app.forceTpose(this.app.currentSourceCharacter);
+                this.refresh();
+            });
             panel.addButton(null, "Open skeleton panel", () => {
                 
                 this.createTransformPanel("source", "");            
@@ -509,6 +518,11 @@ class Gui {
             panel.addButton(null, "Apply original bind pose", () => {                
                 this.app.applyOriginalBindPose(this.app.currentCharacter);
 
+                this.refresh();
+            });
+            panel.addButton(null, "Convert current pose to T-pose", () => {
+                
+                this.app.forceTpose(this.app.currentCharacter);
                 this.refresh();
             });
             panel.addButton(null, "Open skeleton panel", () => {
@@ -799,198 +813,3 @@ function findIndexOfBoneByName( skeleton, name ){
 }
 
 export {Gui}
-
-class IEvent {
-    constructor(name, value, domEvent) {
-      this.name = name;
-      this.value = value;
-      this.domEvent = domEvent;
-    }
-  }
-
-LX.Panel.prototype.addDropdown = function ( name, values, value, callback, options = {} ) {
-
-    let widget = this.create_widget(name, LX.Widget.DROPDOWN, options);
-    widget.onGetValue = () => {
-        return element.querySelector("li.selected").getAttribute('value');
-    };
-    widget.onSetValue = ( newValue, skipCallback ) => {
-        let btn = element.querySelector(".lexwidgetname .lexicon");
-        if(btn) btn.style.display = (newValue != wValue.iValue ? "block" : "none");
-        value = newValue;
-        list.querySelectorAll('li').forEach( e => { if( e.getAttribute('value') == value ) e.click() } );
-        if( !skipCallback ) this._trigger( new IEvent(name, value, null), callback ); 
-    };
-
-    let element = widget.domEl;
-    let that = this;
-
-    // Add reset functionality
-    if(widget.name && !(options.skipReset ?? false))
-    {
-        LX.Panel._add_reset_property(element.domName, function() {
-            value = wValue.iValue;
-            list.querySelectorAll('li').forEach( e => { if( e.getAttribute('value') == value ) e.click() } );
-            this.style.display = "none";
-        });
-    }
-
-    let container = document.createElement('div');
-    container.className = "lexdropdown";
-    container.style.width = options.inputWidth || "calc( 100% - " + LX.DEFAULT_NAME_WIDTH + ")";
-    
-    // Add widget value
-    let wValue = document.createElement('div');
-    wValue.className = "lexdropdown lexoption";
-    wValue.name = name;
-    wValue.iValue = value;
-
-    // Add dropdown widget button  
-    let buttonName = value;
-    buttonName += "<a class='fa-solid fa-angle-down' style='float:right; margin-right: 3px;'></a>";
-
-    this.queue(container);
-
-    let selectedOption = this.addButton(null, buttonName, (value, event) => {
-        if( list.unfocus_event ) {
-            delete list.unfocus_event;
-            return;
-        }
-        element.querySelector(".lexoptions").style.top = (that.root.parentElement.offsetTop + selectedOption.offsetTop + selectedOption.offsetHeight - that.root.scrollTop) + 'px';
-        element.querySelector(".lexoptions").style.width = (event.currentTarget.clientWidth) + 'px';
-        element.querySelector(".lexoptions").toggleAttribute('hidden');
-        list.focus();
-    }, { buttonClass: 'array', skipInlineCount: true });
-
-    this.clearQueue();
-
-    selectedOption.style.width = "100%";   
-
-    selectedOption.refresh = (v) => {
-        if(selectedOption.querySelector("span").innerText == "")
-            selectedOption.querySelector("span").innerText = v;
-        else
-            selectedOption.querySelector("span").innerHTML = selectedOption.querySelector("span").innerHTML.replaceAll(selectedOption.querySelector("span").innerText, v); 
-    }
-
-    // Add dropdown options container
-    let list = document.createElement( 'ul' );
-    list.tabIndex = -1;
-    list.className = "lexoptions";
-    list.hidden = true;
-
-    list.addEventListener( 'focusout', function( e ) {
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        if(e.relatedTarget === selectedOption.querySelector( 'button' )) {
-            this.unfocus_event = true;
-            setTimeout( () => delete this.unfocus_event, 200 );
-        } else if ( e.relatedTarget && e.relatedTarget.tagName == "INPUT" ) {
-            return;
-        }else if ( e.target.id == 'input-filter' ) {
-            return;
-        }
-        this.toggleAttribute( 'hidden', true );
-    });
-
-    // Add filter options
-    let filter = null;
-    if(options.filter ?? false)
-        filter = this._addFilter("Search option", {container: list, callback: this._search_options.bind(list, values)});
-
-    // Create option list to empty it easily..
-    const list_options = document.createElement('span');
-    list.appendChild(list_options);
-    
-    if( filter ) {
-        list.prepend(filter);
-        list_options.style.height = "calc(100% - 25px)";
-
-        filter.addEventListener('focusout', function(e) {
-            if (e.relatedTarget && e.relatedTarget.tagName == "UL" && e.relatedTarget.classList.contains("lexoptions"))
-                return;
-            list.toggleAttribute('hidden', true);
-        });
-    }
-
-    // Add dropdown options list
-    list.refresh = (options) => {
-
-        // Empty list
-        list_options.innerHTML = "";
-
-        for(let i = 0; i < options.length; i++)
-        {
-            let iValue = options[i];
-            let li = document.createElement('li');
-            let option = document.createElement('div');
-            option.className = "option";
-            li.appendChild(option);
-            li.addEventListener("click", (e) => {
-                element.querySelector(".lexoptions").toggleAttribute('hidden', true);
-                const currentSelected = element.querySelector(".lexoptions .selected");
-                if(currentSelected) currentSelected.classList.remove("selected");
-                value = e.currentTarget.getAttribute("value");
-                e.currentTarget.toggleAttribute('hidden', false);
-                e.currentTarget.classList.add("selected");
-                selectedOption.refresh(value);
-
-                let btn = element.querySelector(".lexwidgetname .lexicon");
-                if(btn) btn.style.display = (value != wValue.iValue ? "block" : "none");
-                that._trigger( new IEvent(name, value, null), callback ); 
-
-                // Reset filter
-                if(filter)
-                {
-                    filter.querySelector('input').value = "";
-                    this._search_options.bind(list, values, "")();
-                }
-            });
-
-            // Add string option
-            if( iValue.constructor != Object ) {
-                option.style.flexDirection = 'unset';
-                option.innerHTML = "</a><span>" + iValue + "</span><a class='fa-solid fa-check'>";
-                option.value = iValue;
-                li.setAttribute("value", iValue);
-                li.className = "lexdropdownitem";
-                if( i == (options.length - 1) ) li.className += " last";
-                if(iValue == value) {
-                    li.classList.add("selected");
-                    wValue.innerHTML = iValue;
-                }
-            }
-            else {
-                // Add image option
-                let img = document.createElement("img");
-                img.src = iValue.src;
-                li.setAttribute("value", iValue.value);
-                li.className = "lexlistitem";
-                option.innerText = iValue.value;
-                option.className += " media";
-                option.prepend(img);
-
-                option.setAttribute("value", iValue.value);
-                option.setAttribute("data-index", i);
-                option.setAttribute("data-src", iValue.src);
-                option.setAttribute("title", iValue.value);
-                if(value == iValue.value)
-                    li.classList.add("selected");
-            }      
-            list_options.appendChild(li);
-        }
-    }
-
-    list.refresh(values);
-
-    container.appendChild(list);
-    element.appendChild(container);
-
-    // Remove branch padding and margins
-    if(!widget.name) {
-        element.className += " noname";
-        container.style.width = "100%";
-    }
-
-    return widget;
-}

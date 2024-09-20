@@ -37,6 +37,7 @@ class App {
         this.srcEmbeddedTransforms = true;
         this.trgEmbeddedTransforms = true;
         this.boneMap = null;
+        this.autoBoneMap = true;
     }
 
     init() {        
@@ -644,6 +645,15 @@ class App {
         skeleton.pose(); 
     }
 
+    forceTpose(characterName) {
+        const character = this.loadedCharacters[characterName];
+        if(this.currentSourceCharacter == characterName) {
+            character.skeleton = applyTPose(character.skeleton, this.srcKeyBones);
+        }
+        else if(this.currentCharacter == characterName) {
+            character.skeleton = applyTPose(character.skeleton, this.trgKeyBones);
+        }
+    }
     applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true, boneNameMap = this.boneMap) {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
@@ -653,27 +663,27 @@ class App {
         let srcPoseMode = this.srcPoseMode;
         let trgPoseMode = this.trgPoseMode;
         
-        if(this.srcPoseMode == 2) {
-            srcSkeleton = applyTPose(srcSkeleton, this.srcKeyBones);
-            srcPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
-            // var boneContainer = new THREE.Group();
-            // boneContainer.add( srcSkeleton.bones[0] );
-            // boneContainer.scale.set(0.01,0.01,0.01)
-            // this.scene.add( boneContainer );
-            // this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
-        }
-        if(this.trgPoseMode == 2) {
-            trgSkeleton = applyTPose(trgSkeleton, this.trgKeyBones);
-            // for(let i = 0; i < trgSkeleton.bones.length; i++) {
-            //     let bone = trgSkeleton.bones[i];
-            //     target.skeleton.bones[i].position.copy(bone.position);
-            //     target.skeleton.bones[i].rotation.copy(bone.rotation);
-            //     target.skeleton.bones[i].scale.copy(bone.scale);
-            // }
-            trgPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
-        }
+        // if(this.srcPoseMode == 2) {
+        //     srcSkeleton = applyTPose(srcSkeleton, this.srcKeyBones);
+        //     srcPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
+        //     // var boneContainer = new THREE.Group();
+        //     // boneContainer.add( srcSkeleton.bones[0] );
+        //     // boneContainer.scale.set(0.01,0.01,0.01)
+        //     // this.scene.add( boneContainer );
+        //     // this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
+        // }
+        // if(this.trgPoseMode == 2) {
+        //     trgSkeleton = applyTPose(trgSkeleton, this.trgKeyBones);
+        //     // for(let i = 0; i < trgSkeleton.bones.length; i++) {
+        //     //     let bone = trgSkeleton.bones[i];
+        //     //     target.skeleton.bones[i].position.copy(bone.position);
+        //     //     target.skeleton.bones[i].rotation.copy(bone.rotation);
+        //     //     target.skeleton.bones[i].scale.copy(bone.scale);
+        //     // }
+        //     trgPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
+        // }
 
-        this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap } );         
+        this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap: (this.autoBoneMap ? null : boneNameMap) } );         
         this.boneMap = this.retargeting.boneMap.nameMap;
 
         if(this.currentAnimation) {
