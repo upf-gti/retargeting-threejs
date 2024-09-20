@@ -703,7 +703,7 @@ class Gui {
                 }
                 const path = files[0].name.split(".");
                 const filename = path[0];
-                extension = path[1];
+                extension = path[1].toLocaleLowerCase();
                 const reader = new FileReader();
                 if (extension == "glb" || extension == "gltf" || extension == "fbx" || isSource && (extension == "bvh" || extension == "bvhe")) { 
                     model = v;
@@ -752,7 +752,7 @@ class Gui {
 
                     const path = files[i].name.split(".");
                     const filename = path[0];
-                    const extension = path[1];
+                    const extension = path[1].toLocaleLowerCase();
                     if (extension == "glb" || extension == "gltf" || isSource && (extension == "bvh" || extension == "bvhe")) { 
                         // Create a data transfer object
                         const dataTransfer = new DataTransfer();

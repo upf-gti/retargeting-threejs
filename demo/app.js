@@ -7,6 +7,7 @@ import { BVHExporter } from './BVHExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js' 
 import { Gui } from './gui.js'
 import { AnimationRetargeting, applyTPose } from '../retargeting.js'
+import { SkeletonHelper } from './skeletonHelper.js';
 
 class App {
     constructor() {
@@ -404,7 +405,8 @@ class App {
                 this.loadedCharacters[avatarName] ={
                     model, skeleton, animations, skeletonHelper
                 }
-                
+                let skeleton2 = new SkeletonHelper(skeleton.bones[0]);
+                this.scene.add(skeleton2)
                 this.onLoadAvatar(model, avatarName);
                 if (callback) {
                     callback(animations);
