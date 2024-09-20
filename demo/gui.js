@@ -59,8 +59,11 @@ class Gui {
         main_area.reduce();
     }
 
-    refresh(){
+    refresh(removePanel){
         this.panel.refresh();
+        if(removePanel && this.dialogTransform ) {
+            this.dialogTransform.close();
+        }
     }
 
     createTransformPanel(type, title) {
