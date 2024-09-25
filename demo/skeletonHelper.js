@@ -13,8 +13,8 @@ class SkeletonHelper extends THREE.Group {
 		super()
 		const bones = getBoneList( object );
 
-		const geometry = new THREE.ConeGeometry( 0.01, 1, 3 );
-        const material = new THREE.MeshBasicMaterial( {color: 0xffff00, depthTest: false, depthWrite: false, toneMapped: false, transparent: true} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
+		const geometry = new THREE.ConeGeometry( 0.02, 1, 3 );
+        const material = new THREE.MeshPhongMaterial( { depthTest: false, depthWrite: false, toneMapped: false, transparent: true} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, bones.length);
         this.add(this.instancedMesh)
 		this.isSkeletonHelper = true;
@@ -38,60 +38,49 @@ class SkeletonHelper extends THREE.Group {
 	
 		_matrixWorldInv.copy( this.root.matrixWorld ).invert();
 
-		for ( let i = 0, j = 0; i < bones.length; i ++ ) {
+		for ( let i = 0; i < bones.length; i ++ ) {
 
 			const bone = bones[ i ];
             _boneMatrix.copy(bone.matrixWorld);
-			if ( bone.parent && bone.parent.isBone ) {
+			if ( bone.children.length && bone.children[0].isBone ) {
                 
-            //     // let position = _vector.clone();
-			// 	// _boneMatrix.multiplyMatrices( _matrixWorldInv, bone.matrixWorld );
-            //     // _vector.setFromMatrixPosition( _boneMatrix );
-			// 	// position.set( _vector.x, _vector.y, _vector.z );
-			// 	// const pos = position.clone();
-                
-			// 	// _boneMatrix.multiplyMatrices( _matrixWorldInv, bone.parent.matrixWorld );
-			// 	// _vector.setFromMatrixPosition( _boneMatrix );
-			// 	// position.set( _vector.x, _vector.y, _vector.z );
-            //     // const length = pos.distanceTo(position);
-            //     // _boneMatrix.makeScale(1,length,1);
-            //     // this.instancedMesh.setMatrixAt(i, _boneMatrix);
                 let position = _vector.clone();
-			// 	_boneMatrix.multiplyMatrices( _matrixWorldInv, bone.matrixWorld );
-                _vector.setFromMatrixPosition( _boneMatrix );
-				position.set( _vector.x, _vector.y, _vector.z );
-				const pos = position.clone();
+				position.setFromMatrixPosition( _boneMatrix );
                 
-			// 	_boneMatrix.multiplyMatrices( _matrixWorldInv, bone.parent.matrixWorld );
-				_vector.setFromMatrixPosition( bone.parent.matrixWorld );
-				position.set( _vector.x, _vector.y, _vector.z );
-                let len = Math.abs(pos.distanceTo(position));
+				let childPos = _vector.clone();
+				childPos.setFromMatrixPosition( bone.children[0].matrixWorld );
+
                 let q = new THREE.Quaternion();
-                _boneMatrix.decompose(pos, q, _vector);
-                _vector.y = len;
-                
-                let dir = new THREE.Vector3();
-                // dir.subVectors(position,pos );
-                // // dir.multiplyScalar(len*0.5);
-                // // dir.multiplyVectors(dir, _vector);
-                // pos.addScaledVector(dir, 0.5)
-                _boneMatrix.compose( pos, q, _vector);
+				_vector.subVectors(childPos, position);
+				let dir = _vector.clone();
+				q.setFromUnitVectors(new THREE.Vector3(0,1,0),_vector.normalize());
+
+                let len = Math.abs(position.distanceTo(childPos));
+				let scale = _vector.clone();
+                //_boneMatrix.decompose(position, q, scale);
+				scale.x = 6*len;
+                scale.y = len;
+                scale.z = 6*len;
+
+                position.addScaledVector(dir, 0.5)
+                _boneMatrix.compose( position, q, scale);
 			}
             else {
-                let position = _vector.clone();
-                let q = new THREE.Quaternion();
+				let position = _vector.clone();
+				let scale = _vector.clone();
+				let q = new THREE.Quaternion();
 
-                _boneMatrix.decompose(position, q, _vector);
-                _vector.y = 0;
-                _boneMatrix.compose( position, q, _vector);
+                _boneMatrix.decompose(position, q, scale);
+
+				scale.x = 0.3;
+				scale.y = 0.03;
+				scale.z = 0.3;
+                _boneMatrix.compose( position, q, scale);
             }
             this.instancedMesh.setMatrixAt(i, _boneMatrix);
 		}
         this.instancedMesh.instanceMatrix.needsUpdate = true;
         this.instancedMesh.computeBoundingSphere();
-		// geometry.getAttribute( 'position' ).needsUpdate = true;
-
-		// super.updateMatrixWorld( force );
 
 	}
 

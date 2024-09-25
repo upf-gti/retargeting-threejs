@@ -7,7 +7,7 @@ import { BVHExporter } from './BVHExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js' 
 import { Gui } from './gui.js'
 import { AnimationRetargeting, applyTPose } from '../retargeting.js'
-import { SkeletonHelper } from './skeletonHelper.js';
+import BoneMappingScene from './boneMapping.js';
 
 class App {
     constructor() {
@@ -39,6 +39,7 @@ class App {
         this.trgEmbeddedTransforms = true;
         this.boneMap = null;
         this.autoBoneMap = true;
+        this.boneMapScene = new BoneMappingScene();  
     }
 
     init() {        
@@ -140,6 +141,7 @@ class App {
         
         this.update(delta); 
         this.controls.update();
+        this.boneMapScene.update();
         const zoom = this.controls.getDistance();
         if( zoom > 80) {
             this.scene.getObjectByName("Grid").visible = false;
@@ -405,8 +407,8 @@ class App {
                 this.loadedCharacters[avatarName] ={
                     model, skeleton, animations, skeletonHelper
                 }
-                let skeleton2 = new SkeletonHelper(skeleton.bones[0]);
-                this.scene.add(skeleton2)
+                // let skeleton2 = new THREE.SkeletonHelper(skeleton.bones[0]);
+                // this.scene.add(skeleton2)
                 this.onLoadAvatar(model, avatarName);
                 if (callback) {
                     callback(animations);
@@ -531,7 +533,7 @@ class App {
         boneContainer.position.x = -1;
         boneContainer.name = "Armature";
         this.scene.add( boneContainer );
-        let skeletonHelper = new THREE.SkeletonHelper(boneContainer);
+        let skeletonHelper = new THREE.THREE.SkeletonHelper(boneContainer);
         skeletonHelper.name = name;
         skeletonHelper.skeleton = skeleton;
         skeletonHelper.changeColor( 0xFF0000, 0xFFFF00 );
@@ -664,27 +666,7 @@ class App {
         let trgSkeleton = target.skeleton;
         let srcPoseMode = this.srcPoseMode;
         let trgPoseMode = this.trgPoseMode;
-        
-        // if(this.srcPoseMode == 2) {
-        //     srcSkeleton = applyTPose(srcSkeleton, this.srcKeyBones);
-        //     srcPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
-        //     // var boneContainer = new THREE.Group();
-        //     // boneContainer.add( srcSkeleton.bones[0] );
-        //     // boneContainer.scale.set(0.01,0.01,0.01)
-        //     // this.scene.add( boneContainer );
-        //     // this.scene.add(new THREE.SkeletonHelper(srcSkeleton.bones[0]))
-        // }
-        // if(this.trgPoseMode == 2) {
-        //     trgSkeleton = applyTPose(trgSkeleton, this.trgKeyBones);
-        //     // for(let i = 0; i < trgSkeleton.bones.length; i++) {
-        //     //     let bone = trgSkeleton.bones[i];
-        //     //     target.skeleton.bones[i].position.copy(bone.position);
-        //     //     target.skeleton.bones[i].rotation.copy(bone.rotation);
-        //     //     target.skeleton.bones[i].scale.copy(bone.scale);
-        //     // }
-        //     trgPoseMode = AnimationRetargeting.BindPoseModes.CURRENT;
-        // }
-
+    
         this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap: (this.autoBoneMap ? null : boneNameMap) } );         
         this.boneMap = this.retargeting.boneMap.nameMap;
 

@@ -780,7 +780,10 @@ class Gui {
         if(this.dialog) {
             this.dialog.close();
         }
+        const area = new LX.Area({width: "50%"});
+
         this.dialog = new LX.Dialog("Bone Mapping", panel => { 
+            
             let htmlStr = "Select the corresponding bone name of your avatar to match the provided list of bone names. An automatic selection is done, adjust if needed.";
             panel.addTextArea(null, htmlStr, null, {disabled: true, fitHeight: true});
             const bones = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones;
@@ -796,23 +799,22 @@ class Gui {
                     this.app.boneMap[part] = value;                    
                 }, {filter: true});
             }
+
+            panel.root.prepend(area.root);
+
         }, { size: ["80%", "70%"], closable: true, onclose: () => {
             if(this.app.currentAnimation) {
                 this.app.bindAnimationToCharacter(this.app.currentAnimation, this.app.currentCharacter);
             }
             this.dialog.panel.clear();
             this.dialog.root.remove();
-        } });        
+            this.app.boneMapScene.dispose();
+        } });      
+
+        this.app.boneMapScene.init(area.root, this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton, this.app.loadedCharacters[this.app.currentCharacter].skeleton, this.app.boneMap);
     }
 }
 
-function findIndexOfBoneByName( skeleton, name ){
-    if ( !name ){ return -1; }
-    let b = skeleton.bones;
-    for( let i = 0; i < b.length; ++i ){
-        if ( b[i].name == name ){ return i; }
-    }
-    return -1;
-}
+
 
 export {Gui}

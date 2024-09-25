@@ -568,16 +568,16 @@ function applyTPose(skeleton, map) {
         // Apply computed rotation to the spine bone global rotation
         rot = rot.setFromUnitVectors(axis, zAxis)
         spineDirO.applyQuaternion(rot);
-        hipsRot = hipsRot.multiply(rot);
+        hipsRot = hipsRot.premultiply(rot);
         
         if (hips.parent) {
             let parent = hips.parent;
             let hipsParentRot = parent.getWorldQuaternion(new THREE.Quaternion());
             // Convert new spine bone global rotation to local rotation and set to the bone
-            hips.quaternion.copy(hipsRot.multiply(hipsParentRot.invert()));
-            let hipsParentPos = parent.getWorldPosition(new THREE.Vector3());
+            hips.quaternion.copy(hipsRot.premultiply(hipsParentRot.invert()));
+            // let hipsParentPos = parent.getWorldPosition(new THREE.Vector3());
 
-            hips.position.copy(spineDirO.sub(hipsParentPos));
+            // hips.position.copy(spineDirO.sub(hipsParentPos));
 
         }
         else {
@@ -776,7 +776,7 @@ function applyTPose(skeleton, map) {
    }
 
     // resultSkeleton.calculateInverses();
-    // resultSkeleton.update(); 
+    resultSkeleton.update(); 
     return resultSkeleton;
 }
 
