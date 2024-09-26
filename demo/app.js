@@ -533,7 +533,7 @@ class App {
         boneContainer.position.x = -1;
         boneContainer.name = "Armature";
         this.scene.add( boneContainer );
-        let skeletonHelper = new THREE.THREE.SkeletonHelper(boneContainer);
+        let skeletonHelper = new THREE.SkeletonHelper(boneContainer);
         skeletonHelper.name = name;
         skeletonHelper.skeleton = skeleton;
         skeletonHelper.changeColor( 0xFF0000, 0xFFFF00 );

@@ -8,13 +8,13 @@ const _matrixWorldInv = /*@__PURE__*/ new THREE.Matrix4();
 
 class SkeletonHelper extends THREE.Group {
 
-	constructor( object ) {
+	constructor( object, color = new THREE.Color().setHex(0xffffff) ) {
 
 		super()
 		const bones = getBoneList( object );
 
 		const geometry = new THREE.ConeGeometry( 0.02, 1, 3 );
-        const material = new THREE.MeshPhongMaterial( { depthTest: false, depthWrite: false, toneMapped: false, transparent: true} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
+        const material = new THREE.MeshPhongMaterial( { color: color, toneMapped: false} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, bones.length);
         this.add(this.instancedMesh)
 		this.isSkeletonHelper = true;
@@ -23,13 +23,9 @@ class SkeletonHelper extends THREE.Group {
 
 		this.root = object;
 		this.bones = bones;
-        // object.getWorldPosition(this.position);
-        // object.getWorldQuaternion(this.quaternion);
-        // object.getWorldScale(this.scale);
-        // this.updateMatrix();
-		// this.matrix = object.matrixWorld;
+		this.color = color;
+        
 		this.matrixAutoUpdate = false;
-
 	}
 
 	updateMatrixWorld( force ) {
@@ -72,9 +68,9 @@ class SkeletonHelper extends THREE.Group {
 
                 _boneMatrix.decompose(position, q, scale);
 
-				scale.x = 0.3;
+				scale.x = 0.2;
 				scale.y = 0.03;
-				scale.z = 0.3;
+				scale.z = 0.2;
                 _boneMatrix.compose( position, q, scale);
             }
             this.instancedMesh.setMatrixAt(i, _boneMatrix);
