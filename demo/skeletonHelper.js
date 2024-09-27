@@ -14,7 +14,7 @@ class SkeletonHelper extends THREE.Group {
 		const bones = getBoneList( object );
 
 		const geometry = new THREE.ConeGeometry( 0.02, 1, 3 );
-        const material = new THREE.MeshPhongMaterial( { color: color, toneMapped: false} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
+        const material = new THREE.MeshPhongMaterial( {color: new THREE.Color().setHex(0xffffff), toneMapped: false} ); //, depthTest: false, depthWrite: false, toneMapped: false, transparent: true
         this.instancedMesh = new THREE.InstancedMesh(geometry, material, bones.length);
         this.add(this.instancedMesh)
 		this.isSkeletonHelper = true;
@@ -26,6 +26,10 @@ class SkeletonHelper extends THREE.Group {
 		this.color = color;
         
 		this.matrixAutoUpdate = false;
+
+		for(let i = 0; i < bones.length; i++) {
+			this.instancedMesh.setColorAt(i, color);
+		}
 	}
 
 	updateMatrixWorld( force ) {

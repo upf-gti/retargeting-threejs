@@ -9,46 +9,77 @@ class BoneMappingScene {
 
     static BASE_COLOR = 0xffffff;
     static VIEW_COLOR = 0x3E57E4;
-    static MAP_COLOR = 0x3E5700;
+    static EDIT_COLOR = 0x7ba80a;
 
-    constructor() {
+    constructor(tposeBones) {
         this.scene = new THREE.Scene();
-        let sceneColor = 0xa0a0a0;//0x303030;
-        // this.scene.background = new THREE.Color( sceneColor, 0 );
         
         //include lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         this.scene.add(ambientLight);
 
-        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
-        hemiLight.position.set( 0, 50, 0 );
-        this.scene.add( hemiLight );
+        const light = new THREE.PointLight(0xffffff, 2, 0, 0);
+        light.position.set(0,0.5,0.5);
+        this.scene.add(light)
 
-        const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
-        dirLight.position.set( - 1, 1.75, 1 );
-        dirLight.position.multiplyScalar( 30 );
-        this.scene.add( dirLight );
-
-        dirLight.castShadow = true;
-
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-
-        const d = 50;
-
-        dirLight.shadow.camera.left = - d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = - d;
-
-        dirLight.shadow.camera.far = 3500;
-        dirLight.shadow.bias = - 0.0001;
-        
         this.active = false;
 
         this.selectedSrcBone = null;
         this.selectedTrgBone = null;
         this.boneMap = null;
+        this.srcTPoseMap = {
+       
+            "ShouldersUnion": null,
+            "Stomach":  	  null,
+            "BelowStomach":   null,
+            "Hips":			  null,
+            "RArm":           null,
+            "RWrist":         null,
+            "LArm":           null,
+            "LWrist":         null,
+            "LUpLeg":         null,
+            "LLeg":           null,
+            "LFoot":          null,
+            "RUpLeg":         null,
+            "RLeg":           null,
+            "RFoot":          null,
+        };
+
+        this.trgTPoseMap = {
+       
+            "ShouldersUnion": null,
+            "Stomach":  	  null,
+            "BelowStomach":   null,
+            "Hips":			  null,
+            "RArm":           null,
+            "RWrist":         null,
+            "LArm":           null,
+            "LWrist":         null,
+            "LUpLeg":         null,
+            "LLeg":           null,
+            "LFoot":          null,
+            "RUpLeg":         null,
+            "RLeg":           null,
+            "RFoot":          null,
+        }
+        this.tPoseBones = [
+       
+            "ShouldersUnion", 
+            "Stomach",  	  
+            "BelowStomach",   
+            "Hips",			  
+            "RArm",           
+            "RWrist",         
+            "LArm",           
+            "LWrist",         
+            "LUpLeg",         
+            "LLeg",           
+            "LFoot",          
+            "RUpLeg",         
+            "RLeg",           
+            "RFoot"          
+        ];
+        
     }
 
     init(root, srcSkeleton, trgSkeleton, boneMap, onSelect = null) {
@@ -153,8 +184,7 @@ class BoneMappingScene {
         }
     }
 
-    onMouseDown(event) {
-        
+    onMouseDown(event) {        
 
         this.mouseX = event.pageX;
         this.mouseY = event.pageY;       
@@ -169,20 +199,16 @@ class BoneMappingScene {
         const delta = 6;
 
         if(diffX < delta && diffY < delta) {
+            this.clearSelection(this.source.instancedMesh, this.selectedSrcBone);
+            this.clearSelection(this.target.instancedMesh, this.selectedTrgBone);
             switch(event.button) {
                 case 0: // LEFT
                     this.state = BoneMappingScene.VIEW;
                     this.div.innerText = 'Mode: VIEW';
                 break;
                 case 2: // RIGHT
-                    if(this.state != BoneMappingScene.MAP) {
-                        this.clearSelection(this.source.instancedMesh, this.selectedSrcBone);
-                        this.clearSelection(this.target.instancedMesh, this.selectedTrgBone);
-                        this.selectedSrcBone = -1;
-                        this.selectedTrgBone = -1;
-                    }
-                    this.state = BoneMappingScene.MAP;
-                    this.div.innerText = 'Mode: MAP';
+                    this.state = BoneMappingScene.EDIT;
+                    this.div.innerText = 'Mode: EDIT';
                 break;
             }
             this.onMouseClick(event);
@@ -213,35 +239,36 @@ class BoneMappingScene {
         if (intersects.length > 0) {
             const bones = intersects[0].object.parent.bones;
             const bone = bones[intersects[0].instanceId];
-            let baseSrcColor = this.source.parent.color || new THREE.Color().setHex( BoneMappingScene.BASE_COLOR );
-            let baseTrgColor = this.target.parent.color || new THREE.Color().setHex( BoneMappingScene.BASE_COLOR );
+            let baseSrcColor = this.source.color || new THREE.Color().setHex( BoneMappingScene.BASE_COLOR );
+            let baseTrgColor = this.target.color || new THREE.Color().setHex( BoneMappingScene.BASE_COLOR );
 
             let selectColor = new THREE.Color();
             
             if(this.state == BoneMappingScene.VIEW) {
                 selectColor.setHex( BoneMappingScene.VIEW_COLOR );
             }
-            else if(this.state == BoneMappingScene.MAP) {
-                selectColor.setHex( BoneMappingScene.MAP_COLOR );
+            else if(this.state == BoneMappingScene.EDIT) {
+                selectColor.setHex( BoneMappingScene.EDIT_COLOR );
             }
 
             // Source selected
             if(intersects[0].object == source) {
-
-                // Remove previous source selection
-                if(this.selectedSrcBone != intersects[0].instanceId) {
-                    intersects[0].object.setColorAt( this.selectedSrcBone, baseSrcColor);
-                }
-                // Remove previous target selection                
-                target.setColorAt( this.selectedTrgBone, baseTrgColor);
                 
                 // Select source bone
                 this.selectedSrcBone = intersects[0].instanceId;                
                 if(this.state == BoneMappingScene.VIEW ) {
                     // Select target bone only in view mode
                     this.selectedTrgBone = findIndexOfBoneByName(target.parent, this.boneMap[bone.name]);
-                    target.setColorAt( this.selectedTrgBone, selectColor);                            
                 }
+                else {
+                    // Update bone mapping in edit mode and return to view mode
+                    const srcName = Object.keys(this.boneMap).find(key => this.boneMap[key] === target.parent.bones[this.selectedTrgBone].name);
+                    this.boneMap[srcName] = null;
+                    this.boneMap[bone.name] = target.parent.bones[this.selectedTrgBone].name;
+                    this.state = BoneMappingScene.VIEW;
+                }
+
+                target.setColorAt( this.selectedTrgBone, selectColor);
                 target.instanceColor.needsUpdate = true;
 
                 if(this.onSelect) {
@@ -250,27 +277,27 @@ class BoneMappingScene {
                 
             } // Target selected
             else if(intersects[0].object == target) {
-                
-                
-                // Remap and select target bone only in map mode and if a source bone is selected
-                if(this.state == BoneMappingScene.MAP && this.selectedSrcBone > -1) {
-                    // Remove previous target selection
-                    if(this.selectedTrgBone != intersects[0].instanceId) {
-                        intersects[0].object.setColorAt( this.selectedTrgBone, baseTrgColor);
-                    }
-                    // Select target bone
-                    this.selectedTrgBone = intersects[0].instanceId;
-                    this.boneMap[source.parent.bones[this.selectedSrcBone].name] = bone.name;
-                    this.state = BoneMappingScene.VIEW;
-                    if(this.onSelect) {
-                        this.onSelect(source.parent.bones[this.selectedSrcBone], this.selectedTrgBone);
-                    }
+                                  
+                // Select target bone
+                this.selectedTrgBone = intersects[0].instanceId;
+
+                if(this.state == BoneMappingScene.VIEW ) {
+                    // Select target bone only in view mode
+                    const srcName = Object.keys(this.boneMap).find(key => this.boneMap[key] === bone.name);
+                    this.selectedSrcBone = findIndexOfBoneByName(source.parent, srcName);     
                 }
                 else {
-                    // Otherwise, keep the state
-                    return;
+                    const srcName = Object.keys(this.boneMap).find(key => this.boneMap[key] === bone.name);
+                    this.boneMap[srcName] = null;
+                    // Update bone mapping in edit mode and return to view mode
+                    this.boneMap[source.parent.bones[this.selectedSrcBone].name] = bone.name;
+                    this.state = BoneMappingScene.VIEW;
                 }
-
+                source.setColorAt( this.selectedSrcBone, selectColor);                            
+                source.instanceColor.needsUpdate = true;
+                if(this.onSelect) {
+                    this.onSelect(source.parent.bones[this.selectedSrcBone], this.selectedTrgBone);
+                }
             }
 
             intersects[0].object.setColorAt( intersects[0].instanceId, selectColor);        
@@ -279,7 +306,7 @@ class BoneMappingScene {
     }
 
     clearSelection(mesh, boneIdx) {
-        mesh.setColorAt( boneIdx, new THREE.Color().setHex( BoneMappingScene.BASE_COLOR ));
+        mesh.setColorAt( boneIdx, mesh.parent.color || new THREE.Color().setHex( BoneMappingScene.BASE_COLOR ));
     }
 
     onUpdateFromGUI(sourceBoneName) {

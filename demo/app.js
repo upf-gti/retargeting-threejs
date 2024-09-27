@@ -39,7 +39,7 @@ class App {
         this.trgEmbeddedTransforms = true;
         this.boneMap = null;
         this.autoBoneMap = true;
-        this.boneMapScene = new BoneMappingScene();  
+        this.boneMapScene = new BoneMappingScene(Object.keys(AnimationRetargeting.boneMap));  
     }
 
     init() {        

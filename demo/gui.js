@@ -782,7 +782,10 @@ class Gui {
         }
         const areaMap = new LX.Area({width: "100%"});
         const [area3D, areaPanel] = areaMap.split({type:'horizontal', sizes: ["50%", "50%"]});
+
         const bonePanel = areaPanel.addPanel({id:"bone-panel"});
+    
+
         const bones = this.app.loadedCharacters[this.app.currentCharacter].skeleton.bones;
         let bonesName = [];
         for(let i = 0; i < bones.length; i++) {
@@ -796,32 +799,18 @@ class Gui {
             panel.root.appendChild(area.root);
             
             // 3D mapping
-            let htmlStr = "Select the corresponding bone of your avatar (blue) to match the animation bones (white). An automatic selection is done, adjust if needed. To visualize the mapping, click the animation bones. To edit it, select the animation bone with the right moutse button, and then select the corresponding bone.";
-            bonePanel.addTextArea(null, htmlStr, null, {disabled: true,  fitHeight: true});
+            this.createBonePanel(bonePanel);
             //2D mapping
             const p = area2D.addPanel();
-            htmlStr = "Select the corresponding bone name of your avatar to match the provided list of bone names. An automatic selection is done, adjust if needed.";
-            p.addTextArea(null, htmlStr, null, {disabled: true});
-            
-            let i = 0;
-            for (const part in this.app.boneMap) {
-                if ((i % 2) == 0) p.sameLine(2);
-                i++;
-                const widget = p.addDropdown(part, bonesName, this.app.boneMap[part], (value, event) => {
-                    this.app.boneMap[part] = value;                    
-                }, {filter: true});
-                if(!this.app.boneMap[part]) {
-                    widget.domEl.classList.add("warning");
-                }
-                widget.domEl.children[0].classList.add("source-color");
-                widget.domEl.children[1].classList.add("target-color");
-            }
+            this.create2DPanel(p, bonesName);
             
             //panel.root.prepend(area.root);
             const tabs = area.addTabs();
             tabs.add("3D mapping", areaMap, {selected: true});
             areaMap.root.style.display = "flex";
-            tabs.add("2D mapping", area2D);
+            tabs.add("2D mapping", area2D, {onSelect: (e, name) => {
+                this.create2DPanel(p, bonesName);
+            }});
 
         }, { size: ["80%", "70%"], closable: true, onclose: () => {
             if(this.app.currentAnimation) {
@@ -836,20 +825,55 @@ class Gui {
         this.app.boneMapScene.init(area3D.root, this.app.loadedCharacters[this.app.currentSourceCharacter].skeleton, this.app.loadedCharacters[this.app.currentCharacter].skeleton, this.app.boneMap, (bone) => { this.createBonePanel(bonePanel, bone, bonesName)});
     }
 
+    create2DPanel(panel, bonesName) {
+        panel.clear();
+        const htmlStr = "Select the corresponding bone name of your avatar to match the provided list of bone names. An automatic selection is done, adjust if needed.";
+        panel.addTextArea(null, htmlStr, null, {disabled: true});
+        
+        let i = 0;
+        for (const part in this.app.boneMap) {
+            if ((i % 2) == 0) panel.sameLine(2);
+            i++;
+            const widget = panel.addDropdown(part, bonesName, this.app.boneMap[part], (value, event) => {
+                this.app.boneMap[part] = value;                    
+            }, {filter: true});
+            if(!this.app.boneMap[part]) {
+                widget.domEl.classList.add("warning");
+            }
+            widget.domEl.children[0].classList.add("source-color");
+            widget.domEl.children[1].classList.add("target-color");
+        }
+    }
+
     createBonePanel(panel, bone, bonesName) {
         panel.clear();
+        panel.branch("Retargeting bone map");
         const s = "Select the corresponding bone of your avatar (white) to match the animation bones (blue). An automatic selection is done, adjust if needed. To visualize the mapping, click the animation bones. To edit it, select the animation bone with the right moutse button, and then select the corresponding bone.";
         panel.addTextArea(null, s, null, {disabled: true, fitHeight: true});
         panel.addText("Source", "Target", null, {disabled: true});
-        const widget = panel.addDropdown(bone.name, bonesName, this.app.boneMap[bone.name], (value, event) => {
-            this.app.boneMap[bone.name] = value;  
-            this.app.boneMapScene.onUpdateFromGUI(bone.name);                  
-        }, {filter: true});
-        if(!this.app.boneMap[bone.name]) {
-            widget.domEl.classList.add("warning");
+        if(bone) {
+            const widget = panel.addDropdown(bone.name, bonesName, this.app.boneMap[bone.name], (value, event) => {
+                this.app.boneMap[bone.name] = value;  
+                this.app.boneMapScene.onUpdateFromGUI(bone.name);                  
+            }, {filter: true});
+            if(!this.app.boneMap[bone.name]) {
+                widget.domEl.classList.add("warning");
+            }
+            widget.domEl.children[0].classList.add("source-color");
+            widget.domEl.children[1].classList.add("target-color");
+            
+            // panel.branch("T-pose skeleton map");
+            panel.addTitle("T-pose skeleton bone");
+            const tboneName = Object.keys(this.app.boneMapScene.srcTPoseMap).find(key => this.app.boneMapScene.srcTPoseMap[key] === bone.name);
+            panel.addDropdown("Assign to", this.app.boneMapScene.tPoseBones, tboneName, (value, event) => {
+                const tboneName = Object.keys(this.app.boneMapScene.srcTPoseMap).find(key => this.app.boneMapScene.srcTPoseMap[key] === bone.name);
+                this.app.boneMapScene.srcTPoseMap[tboneName] = null;
+                this.app.boneMapScene.srcTPoseMap[value] = bone.name;
+                this.app.boneMapScene.trgTPoseMap[value] = this.app.boneMap[bone.name];
+                            
+            }, {filter: true});
         }
-        widget.domEl.children[0].classList.add("source-color");
-        widget.domEl.children[1].classList.add("target-color");
+
     }
 }
 
