@@ -848,7 +848,7 @@ class Gui {
     createBonePanel(panel, bone, bonesName) {
         panel.clear();
         panel.branch("Retargeting bone map");
-        const s = "Select the corresponding bone of your avatar (white) to match the animation bones (blue). An automatic selection is done, adjust if needed. To visualize the mapping, click the animation bones. To edit it, select the animation bone with the right moutse button, and then select the corresponding bone.";
+        const s = "An automatic mapping is done, adjust if needed. Click on a bone to highlight its corresponding bone on the other skeleton. To edit it, select a bone on one skeleton with the left mouse button, then right-click on the other skeleton to assign a new corresponding bone. This can also be done using the dropdown menu. The source skeleton is displayed in blue, while the target skeleton is shown in white. Bones without a mapping are highlighted in yellow.";
         panel.addTextArea(null, s, null, {disabled: true, fitHeight: true});
         panel.addText("Source", "Target", null, {disabled: true});
         if(bone) {
@@ -863,7 +863,9 @@ class Gui {
             widget.domEl.children[1].classList.add("target-color");
             
             // panel.branch("T-pose skeleton map");
-            panel.addTitle("T-pose skeleton bone");
+            panel.addTitle("T-pose skeleton map (optional)");
+            const text = "To automatically apply a T-pose, it is necessary to identify some of the bones. If you want to apply it, assign the selected bone if it matches any of the options.";
+            panel.addTextArea(null, text, null, {disabled: true, fitHeight: true});
             const tboneName = Object.keys(this.app.boneMapScene.srcTPoseMap).find(key => this.app.boneMapScene.srcTPoseMap[key] === bone.name);
             panel.addDropdown("Assign to", this.app.boneMapScene.tPoseBones, tboneName, (value, event) => {
                 const tboneName = Object.keys(this.app.boneMapScene.srcTPoseMap).find(key => this.app.boneMapScene.srcTPoseMap[key] === bone.name);
@@ -872,6 +874,12 @@ class Gui {
                 this.app.boneMapScene.trgTPoseMap[value] = this.app.boneMap[bone.name];
                             
             }, {filter: true});
+            const img = document.createElement('img');
+            img.src = "tpose-map.png";
+            img.style.width = "50%";
+            img.style.left = "25%";
+            img.style.position = "relative";
+            panel.current_branch.content.appendChild(img);
         }
 
     }

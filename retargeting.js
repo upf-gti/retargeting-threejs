@@ -511,8 +511,9 @@ function applyTPose(skeleton, map) {
     
     let resultSkeleton = skeleton;
     // Check if spine is extended 
-    let spineChild = resultSkeleton.getBoneByName(map.Stomach);
-    let spineParent = spineChild.parent; 
+    let spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
+    let spineChild = spineBase.children[0];
+    let spineParent = spineBase; 
     let parent = spineParent.parent;
     while(parent && parent.isBone) {
         let pos = spineParent.getWorldPosition(new THREE.Vector3());
@@ -543,7 +544,7 @@ function applyTPose(skeleton, map) {
     let lefLegDir = new THREE.Vector3();
     lefLegDir.subVectors(leftBaseLegPos, hipsPos).normalize();
 
-    let spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
+    spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
     const spineBasePos = spineBase.getWorldPosition(new THREE.Vector3());
     
     // Compute spine direction
