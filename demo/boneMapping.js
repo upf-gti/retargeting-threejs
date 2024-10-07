@@ -37,10 +37,8 @@ class BoneMappingScene {
             "LArm":           null,
             "LWrist":         null,
             "LUpLeg":         null,
-            "LLeg":           null,
             "LFoot":          null,
             "RUpLeg":         null,
-            "RLeg":           null,
             "RFoot":          null,
         };
 
@@ -53,27 +51,21 @@ class BoneMappingScene {
             "LArm":           null,
             "LWrist":         null,
             "LUpLeg":         null,
-            "LLeg":           null,
             "LFoot":          null,
             "RUpLeg":         null,
-            "RLeg":           null,
             "RFoot":          null,
         }
         this.tPoseBones = [
        
             "ShouldersUnion", 
-            "Stomach",  	  
             "BelowStomach",   
-            "Hips",			  
             "RArm",           
             "RWrist",         
             "LArm",           
             "LWrist",         
             "LUpLeg",         
-            "LLeg",           
             "LFoot",          
             "RUpLeg",         
-            "RLeg",           
             "RFoot"          
         ];
         

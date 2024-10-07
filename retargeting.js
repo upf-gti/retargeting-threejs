@@ -613,8 +613,8 @@ function applyTPose(skeleton, map) {
 
     // Check if left leg follow the -Y axis
     yAxis = new THREE.Vector3(0, -1, 0);
-    leftLegBase = resultSkeleton.getBoneByName(map.LLeg);
     leftLegEnd = resultSkeleton.getBoneByName(map.LFoot);
+    leftLegBase = leftLegEnd.parent;
 
     alignBoneToAxis(parent, yAxis);
     
@@ -673,8 +673,8 @@ function applyTPose(skeleton, map) {
     alignBoneToAxis(rightLegBase, rightLegBaseDir);
 
     // Check if right leg follow the -Y axis
-    rightLegBase = resultSkeleton.getBoneByName(map.RLeg);
     rightLegEnd = resultSkeleton.getBoneByName(map.RFoot);
+    rightLegBase = rightLegEnd.parent;
 
     alignBoneToAxis(parent, yAxis);
            
