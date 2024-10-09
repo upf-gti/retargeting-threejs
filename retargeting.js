@@ -508,6 +508,12 @@ function applyTPose(skeleton, map) {
         map = computeAutoBoneMap(skeleton);
         map = map.nameMap;
     }
+    else {
+        if(Object.values(map).every(value => value === null)) {
+            map = computeAutoBoneMap(skeleton);
+            map = map.nameMap;
+        }
+    }
     
     let resultSkeleton = skeleton;
     // Check if spine is extended 
@@ -778,7 +784,7 @@ function applyTPose(skeleton, map) {
 
     // resultSkeleton.calculateInverses();
     resultSkeleton.update(); 
-    return resultSkeleton;
+    return {skeleton: resultSkeleton, map};
 }
 
 /**

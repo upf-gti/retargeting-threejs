@@ -652,12 +652,24 @@ class App {
     forceTpose(characterName) {
         const character = this.loadedCharacters[characterName];
         if(this.currentSourceCharacter == characterName) {
-            character.skeleton = applyTPose(character.skeleton, this.srcKeyBones);
+            if(this.srcKeyBones) {
+                this.boneMapScene.srcTPoseMap = this.srcKeyBones;
+            }
+
+            const result = applyTPose(character.skeleton, this.boneMapScene.srcTPoseMap );
+            character.skeleton = result.skeleton;
+            this.boneMapScene.srcTPoseMap = result.map;
         }
         else if(this.currentCharacter == characterName) {
-            character.skeleton = applyTPose(character.skeleton, this.trgKeyBones);
+            if(this.trgKeyBones) {
+                this.boneMapScene.trgTPoseMap = this.trgKeyBones;
+            }
+            const result = applyTPose(character.skeleton, this.boneMapScene.trgTPoseMap);
+            character.skeleton = result.skeleton;
+            this.boneMapScene.trgTPoseMap = result.map;
         }
     }
+
     applyRetargeting(srcEmbedWorldTransforms = true, trgEmbedWorldTransforms = true, boneNameMap = this.boneMap) {
         const source = this.loadedCharacters[this.currentSourceCharacter];
         const target = this.loadedCharacters[this.currentCharacter];
