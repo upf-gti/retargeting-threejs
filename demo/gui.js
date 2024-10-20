@@ -374,7 +374,7 @@ class Gui {
                     document.getElementById("loading").style.display = "block";
                     let modelFilePath = this.avatarOptions[value][0]; 
                     let modelRotation = (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), this.avatarOptions[value][1] ); 
-                    if( extension == "glb" || extension == "gltf" ) {
+                    if( extension == "glb" || extension == "gltf" || extension == "fbx" ) {
                         this.app.loadAvatar(modelFilePath, modelRotation, value, extension, (animations) => { 
                             this.app.changeSourceAvatar(value);
                             avatarsWithAnimations.push({ value: value, src: ""});
