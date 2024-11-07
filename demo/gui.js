@@ -791,7 +791,7 @@ class Gui {
         for(let i = 0; i < bones.length; i++) {
             bonesName.push(bones[i].name);
         }
-        const area = new LX.Area({width: "100%"});
+        const area = new LX.Area({width: "100%", height: "calc(100% - 30px)"});
         const area2D = new LX.Area();
 
         this.dialog = new LX.Dialog("Bone Mapping", panel => { 
@@ -807,7 +807,7 @@ class Gui {
             //panel.root.prepend(area.root);
             const tabs = area.addTabs();
             tabs.add("3D mapping", areaMap, {selected: true});
-            areaMap.root.style.display = "flex";
+            // areaMap.root.style.display = "flex";
             tabs.add("2D mapping", area2D, {onSelect: (e, name) => {
                 this.create2DPanel(p, bonesName);
             }});
@@ -849,7 +849,7 @@ class Gui {
         panel.clear();
         panel.branch("Retargeting bone map");
         const s = "An automatic mapping is done, adjust if needed. Click on a bone to highlight its corresponding bone on the other skeleton. To edit it, select a bone on one skeleton with the left mouse button, then right-click on the other skeleton to assign a new corresponding bone. This can also be done using the dropdown menu. The source skeleton is displayed in blue, while the target skeleton is shown in white. Bones without a mapping are highlighted in yellow.";
-        panel.addTextArea(null, s, null, {disabled: true, fitHeight: true});
+        panel.addTextArea(null, s, null, {disabled: true, height: "70px"});
         panel.addText("Source", "Target", null, {disabled: true});
         if(bone) {
             const widget = panel.addDropdown(bone.name, bonesName, this.app.boneMap[bone.name], (value, event) => {
@@ -876,12 +876,12 @@ class Gui {
             }, {filter: true});
             const img = document.createElement('img');
             img.src = "tpose-map.png";
-            img.style.width = "50%";
+            img.style.width = "45%";
             img.style.left = "25%";
             img.style.position = "relative";
             panel.current_branch.content.appendChild(img);
         }
-
+        panel.merge();
     }
 }
 

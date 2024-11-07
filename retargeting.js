@@ -50,7 +50,7 @@ class AnimationRetargeting {
         "LHandThumb":     "lefthandthumb1",
         "LHandThumb2":    "lefthandthumb2",
         "LHandThumb3":    "lefthandthumb3",
-        "LHandThumb4":    "lefthandthumb14",
+        "LHandThumb4":    "lefthandthumb4",
         "LHandIndex":     "lefthandindex1",
         "LHandIndex2":    "lefthandindex2",
         "LHandIndex3":    "lefthandindex3",

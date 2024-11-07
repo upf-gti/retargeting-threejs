@@ -88,7 +88,8 @@ class BoneMappingScene {
         this.scene.add(this.source);
         this.scene.add(this.target);
 
-        for(let srcBoneName in this.boneMap) {
+        for(let i = 0; i < this.source.bones.length; i++) {
+            const srcBoneName = this.source.bones[i].name;
             if(!this.boneMap[srcBoneName]) {
                 const id = findIndexOfBoneByName(this.source, srcBoneName);
                 if(id < 0) {
@@ -275,6 +276,7 @@ class BoneMappingScene {
             // Source selected
             if(intersects[0].object == source) {
                 
+                const lastSelected = this.selectedSrcBone;
                 // Select source bone
                 this.selectedSrcBone = intersects[0].instanceId;                
                 if(this.state == BoneMappingScene.VIEW ) {
@@ -284,7 +286,12 @@ class BoneMappingScene {
                 else {
                     // Update bone mapping in edit mode and return to view mode
                     const srcName = Object.keys(this.boneMap).find(key => this.boneMap[key] === target.parent.bones[this.selectedTrgBone].name);
-                    this.boneMap[srcName] = null;
+                    if(srcName) {
+                        this.boneMap[srcName] = null;
+                    }
+                    if(lastSelected > -1) {
+                        this.clearSelection(this.source.instancedMesh, lastSelected, BoneMappingScene.UNMAPED_COLOR);
+                    }
                     this.boneMap[bone.name] = target.parent.bones[this.selectedTrgBone].name;
                     this.state = BoneMappingScene.VIEW;
                 }
@@ -299,6 +306,7 @@ class BoneMappingScene {
             } // Target selected
             else if(intersects[0].object == target) {
                                   
+                const lastSelected = this.selectedTrgBone;
                 // Select target bone
                 this.selectedTrgBone = intersects[0].instanceId;
 
@@ -309,7 +317,12 @@ class BoneMappingScene {
                 }
                 else {
                     const srcName = Object.keys(this.boneMap).find(key => this.boneMap[key] === bone.name);
-                    this.boneMap[srcName] = null;
+                    if(srcName) {
+                        this.boneMap[srcName] = null;
+                    }
+                    if(lastSelected > -1) {
+                        this.clearSelection(this.target.instancedMesh, lastSelected, BoneMappingScene.UNMAPED_COLOR);
+                    }
                     // Update bone mapping in edit mode and return to view mode
                     this.boneMap[source.parent.bones[this.selectedSrcBone].name] = bone.name;
                     this.state = BoneMappingScene.VIEW;
