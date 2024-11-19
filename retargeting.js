@@ -759,7 +759,22 @@ function applyTPose(skeleton, map) {
         parent = leftBase.parent;
     }
 
+    leftEnd = resultSkeleton.getBoneByName(map.LWrist);
+    const innerLoop = (parent) => {
+        child = parent.children[0];
+        while(parent.children.length) {
+            let pos = child.getWorldPosition(new THREE.Vector3());
+            let parentPos = parent.getWorldPosition(new THREE.Vector3());  
 
+            alignBoneToAxis(parent, xAxis);
+            parent = child;
+            child = parent.children[0];
+        }
+    }
+    for(let i = 0; i < leftEnd.children.length; i++) {
+        innerLoop(leftEnd.children[i]);
+    }
+   
     //RIGHT
     // Check if right arm follow the -X axis
    let rArm = resultSkeleton.getBoneByName(map.RArm).parent;
@@ -781,6 +796,12 @@ function applyTPose(skeleton, map) {
        rightBase = rightBase.parent; 
        parent = rightBase.parent;
    }
+
+    rightEnd = resultSkeleton.getBoneByName(map.RWrist);
+
+    for(let i = 0; i < rightEnd.children.length; i++) {
+        innerLoop(rightEnd.children[i]);
+    }
 
     // resultSkeleton.calculateInverses();
     resultSkeleton.update(); 
