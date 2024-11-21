@@ -652,18 +652,18 @@ class App {
     forceTpose(characterName) {
         const character = this.loadedCharacters[characterName];
         if(this.currentSourceCharacter == characterName) {
-            if(this.srcKeyBones) {
+            //if(this.srcKeyBones) {
                 this.boneMapScene.srcTPoseMap = this.srcKeyBones;
-            }
+            //}
 
             const result = applyTPose(character.skeleton, this.boneMapScene.srcTPoseMap );
             character.skeleton = result.skeleton;
             this.boneMapScene.srcTPoseMap = result.map;
         }
         else if(this.currentCharacter == characterName) {
-            if(this.trgKeyBones) {
+            //if(this.trgKeyBones) {
                 this.boneMapScene.trgTPoseMap = this.trgKeyBones;
-            }
+            //}
             const result = applyTPose(character.skeleton, this.boneMapScene.trgTPoseMap);
             character.skeleton = result.skeleton;
             this.boneMapScene.trgTPoseMap = result.map;
