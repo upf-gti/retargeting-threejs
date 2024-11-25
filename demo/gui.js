@@ -222,6 +222,11 @@ class Gui {
                     this.app.trgPoseMode = poseModes.indexOf(v);
                 }, {nameWidth: "200px"});
                 
+                p.addCheckbox("Apply IK", this.app.useIK ?? false, (v) => {
+                    this.app.useIK = v;
+                    this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, this.app.boneMap);
+                },{nameWidth: "auto"})
+
                 p.sameLine();
                 p.addButton(null, "Apply retargeting", () => {
                     this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, this.app.boneMap);

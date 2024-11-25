@@ -8,6 +8,7 @@ import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
 import { Gui } from './gui.js'
 import { AnimationRetargeting, applyTPose } from '../retargeting.js'
 import BoneMappingScene from './boneMapping.js';
+import { IKCompute, IKPose, IKRig } from '../IKRig.js';
 
 class App {
     constructor() {
@@ -39,7 +40,15 @@ class App {
         this.trgEmbeddedTransforms = true;
         this.boneMap = null;
         this.autoBoneMap = true;
-        this.boneMapScene = new BoneMappingScene(Object.keys(AnimationRetargeting.boneMap));  
+        this.boneMapScene = new BoneMappingScene(Object.keys(AnimationRetargeting.boneMap));
+
+        this.srcIKPose = new IKPose();
+        this.trgIKPose = new IKPose();
+        
+        this.useIK = true;
+
+        this.srcRig = null;
+        this.trgRig = null;
     }
 
     init() {        
@@ -113,20 +122,21 @@ class App {
         if(urlParams.has('controls')) {
             showControls = !(urlParams.get('controls') === "false");
         }
-        let modelToLoad = ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
-            this.changeSourceAvatar( "Woman" );                         
+        let modelToLoad = ['bmlTest.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+        this.loadAvatar(modelToLoad[0], modelToLoad[1], "bmlTest", "glb", ()=>{
+            this.changeSourceAvatar( "bmlTest" );
+            modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
+                this.gui = new Gui( this ); 
+                this.changeAvatar( "ReadyEva" );
+                this.animate();
+                document.getElementById("loading").style.display = "none";
+                this.isAppReady = true;
+                        
+            });                    
         });
        
-        modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
-            this.gui = new Gui( this ); 
-            this.changeAvatar( "ReadyEva" );
-            this.animate();
-            document.getElementById("loading").style.display = "none";
-            this.isAppReady = true;
-                    
-        });
+        
 
         window.addEventListener( 'resize', this.onWindowResize.bind(this) );
     }
@@ -165,6 +175,11 @@ class App {
             }
             if(this.sourceMixer) {
                 this.sourceMixer.update( deltaTime );
+            }
+
+            if(this.useIK) {
+                IKCompute.run(this.srcRig, this.srcIKPose);
+                this.srcIKPose.applyRig(this.trgRig, this.trgIKPose);
             }
         }
     }
@@ -681,6 +696,11 @@ class App {
     
         this.retargeting = new AnimationRetargeting(srcSkeleton, trgSkeleton, { srcPoseMode, trgPoseMode, srcEmbedWorldTransforms: this.srcEmbeddedTransforms, trgEmbedWorldTransforms: this.trgEmbeddedTransforms, boneNameMap: (this.autoBoneMap ? null : boneNameMap) } );         
         this.boneMap = this.retargeting.boneMap.nameMap;
+
+        if(this.useIK) {
+            this.srcRig = new IKRig().init(this.retargeting.srcBindPose, this.retargeting.srcSkeleton);
+            this.trgRig = new IKRig().init(this.retargeting.trgBindPose, this.retargeting.trgSkeleton);
+        }
 
         if(this.currentAnimation) {
             this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);
