@@ -626,7 +626,7 @@ function applyTPose(skeleton, map) {
     
     // Compute perpendicular axis between left leg and left foot
     leftLegBasePos = leftLegEnd.getWorldPosition(new THREE.Vector3());
-    let child = leftLegEnd.children[0].children[0];
+    let child = leftLegEnd.children[0].children.length ? leftLegEnd.children[0].children[0] : leftLegEnd.children[0];
     let childPos = child.getWorldPosition(new THREE.Vector3());  
 
     // Compute leg direction (foot-to-footend)
@@ -699,7 +699,7 @@ function applyTPose(skeleton, map) {
 
     // Compute perpendicular axis between right leg and right foot
     rightLegBasePos = rightLegEnd.getWorldPosition(new THREE.Vector3());
-    child = rightLegEnd.children[0].children[0];
+    child = rightLegEnd.children[0].children.length ? rightLegEnd.children[0].children[0] : rightLegEnd.children[0];
     childPos = child.getWorldPosition(new THREE.Vector3());  
 
     // Compute leg direction (foot-to-footend)
