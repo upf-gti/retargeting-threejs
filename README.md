@@ -4,7 +4,7 @@ Animation and pose retargeting solver for 3D humanoid characters using Threejs.
 
 See [this](docs/Algorithm.md) documentation for the algorithm explanation and some animation related topics.
 
-[[Try demo](https://webglstudio.org/demos/retargeting-threejs/demo)]
+[[Try demo](https://resources.gti.upf.edu/demos/retargeting-threejs/demo/)]
 
 ## Set up
 To use the code, include the <b>retargeting.js</b> file in your project and include the following lines in your <b>index.html</b>. The <b>retargeting.js</b> expects an importmap for "three":
