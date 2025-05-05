@@ -802,7 +802,10 @@ function applyTPose(skeleton, map) {
     for(let i = 0; i < rightEnd.children.length; i++) {
         innerLoop(rightEnd.children[i]);
     }
-
+    //normalize bone quaternions
+    resultSkeleton.bones.forEach(bone =>{
+        bone.quaternion.normalize();
+    })
     // resultSkeleton.calculateInverses();
     resultSkeleton.update(); 
     return {skeleton: resultSkeleton, map};
