@@ -335,7 +335,7 @@ class AnimationRetargeting {
 
     /**
      * 
-     * assumes srcTrack IS a position track (VectorKeyframeTrack) with the proper values array and name (boneName.scale) 
+     * assumes srcTrack IS a position track (VectorKeyframeTrack) with the proper values array and name (boneName.position) 
      * @param {THREE.VectorKeyframeTrack} srcTrack 
      * @returns {THREE.VectorKeyframeTrack}
      */
@@ -377,7 +377,7 @@ class AnimationRetargeting {
             }
         }
         // TODO missing interpolation mode. Assuming always linear. Also check if arrays are copied or referenced
-        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".position", srcTrack.times, trgValues ); 
+        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".position", srcTrack.times.slice(), trgValues ); 
     }
     
     /**
@@ -393,7 +393,7 @@ class AnimationRetargeting {
         } 
 
         let quat = new THREE.Quaternion( 0,0,0,1 );
-        let srcValues = srcTrack.values;
+        const srcValues = srcTrack.values;
         let trgValues = new Float32Array( srcValues.length );
         for( let i = 0; i < srcValues.length; i+=4 ){
             quat.set( srcValues[i], srcValues[i+1], srcValues[i+2], srcValues[i+3] );
@@ -405,11 +405,10 @@ class AnimationRetargeting {
         }
 
         // TODO missing interpolation mode. Assuming always linear
-        return new THREE.QuaternionKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".quaternion", srcTrack.times, trgValues ); 
+        return new THREE.QuaternionKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".quaternion", srcTrack.times.slice(), trgValues ); 
     }
 
     /**
-     * NOT IMPLEMENTEED
      * assumes srcTrack IS a scale track (VectorKeyframeTrack) with the proper values array and name (boneName.scale) 
      * @param {THREE.VectorKeyframeTrack} srcTrack 
      * @returns {THREE.VectorKeyframeTrack}
@@ -420,10 +419,21 @@ class AnimationRetargeting {
         if ( boneIndex < 0 || this.boneMap.idxMap[ boneIndex ] < 0 ){
             return null;
         } 
-        // TODO
+        const srcScale = this.srcBindPose.bones[boneIndex].scale;
+        const trgScale = this.trgBindPose.bones[ this.boneMap.idxMap[ boneIndex ] ].scale;
+        const scaleRatio = trgScale.clone().divide(srcScale);
+
+        const srcValues = srcTrack.values;
+        let trgValues = new Float32Array( srcValues.length );
+        for( let i = 0; i < srcValues.length; i+=3 ){
+            trgValues[i] = srcValues[i] * scaleRatio;
+            trgValues[i+1] = srcValues[i+1] * scaleRatio;
+            trgValues[i+2] = srcValues[i+2] * scaleRatio;
+        }
+
 
         // TODO missing interpolation mode. Assuming always linear. Also check if arrays are copied or referenced
-        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".scale", srcTrack.times, srcTrack.values ); 
+        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".scale", srcTrack.times.slice(), trgValues ); 
     }
 
     /**
@@ -444,7 +454,6 @@ class AnimationRetargeting {
 
             if ( newTrack ){ trgTracks.push( newTrack ); }
         } 
-
         // negative duration: automatically computes proper duration of animation based on tracks
         return new THREE.AnimationClip( anim.name, -1, trgTracks, anim.blendMode ); 
     }
