@@ -42,7 +42,7 @@ class App {
         this.boneMapScene = new BoneMappingScene(Object.keys(AnimationRetargeting.boneMap));  
     }
 
-    init() {        
+    async init() {        
         this.scene = new THREE.Scene();
         let sceneColor = 0xa0a0a0;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
@@ -113,21 +113,38 @@ class App {
         if(urlParams.has('controls')) {
             showControls = !(urlParams.get('controls') === "false");
         }
-        let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
-            this.changeSourceAvatar( "Woman" );                         
-        });
-       
-        modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
-            this.gui = new Gui( this ); 
-            this.changeAvatar( "ReadyEva" );
-            this.animate();
-            document.getElementById("loading").style.display = "none";
-            this.isAppReady = true;
-                    
-        });
 
+
+        let loadingPromises = [];
+
+        let p = new Promise( resolve => {
+            let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
+                resolve();
+            });
+            
+        } );
+        loadingPromises.push( p );
+        
+        p = new Promise( resolve => {
+            let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
+                resolve();    
+            });
+        } );
+        loadingPromises.push( p );
+
+        // wait until all avatars are loaded
+        await Promise.all( loadingPromises );
+        
+        // now, prepare and run the application
+        this.changeSourceAvatar( "Woman" );                         
+        this.gui = new Gui( this ); 
+        this.changeAvatar( "ReadyEva" );
+        this.animate();
+        document.getElementById("loading").style.display = "none";
+        this.isAppReady = true;
+        
         window.addEventListener( 'resize', this.onWindowResize.bind(this) );
     }
 
