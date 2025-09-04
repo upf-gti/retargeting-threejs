@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-//import { normalize } from 'three/src/math/MathUtils.js';
 
 
 // asymetric and/or negative scaling of objects is not properly supported 
@@ -71,9 +70,11 @@ class AnimationRetargeting {
         "LUpLeg":         "leftupleg",
         "LLeg":           "leftleg",
         "LFoot":          "leftfoot",
+        "LToeBase":       "lefttoebase",
         "RUpLeg":         "rightupleg",
         "RLeg":           "rightleg",
         "RFoot":          "rightfoot",
+        "RToeBase":       "righttoebase",
     };
     /**
      * Retargets animations and/or current poses from one skeleton to another. 
@@ -106,8 +107,8 @@ class AnimationRetargeting {
         this.srcBindPose = this.cloneRawSkeleton( this.srcSkeleton, options.srcPoseMode, options.srcEmbedWorldTransforms ); // returns pure skeleton, without any object model applied 
         this.trgBindPose = this.cloneRawSkeleton( this.trgSkeleton, options.trgPoseMode, options.trgEmbedWorldTransforms ); // returns pure skeleton, without any object model applied
 
-        this.precomputedQuats = this.precomputeRetargetingQuats();
-        this.proportionRatio = this.computeProportionRatio(); // returns an aproximate ratio of lengths between source skeleton and target skeleton
+        this.precomputedQuats = this._precomputeRetargetingQuats();
+        this.proportionRatio = this._computeProportionRatio(); // returns an aproximate ratio of lengths between source skeleton and target skeleton. Used in Position retargeting
     }
 
     /**
@@ -241,7 +242,7 @@ class AnimationRetargeting {
     /**
     * Computes an aproximate ratio of lengths between source skeleton and target skeleton
     */
-    computeProportionRatio(){
+    _computeProportionRatio(){
         let srcLength = 0;        
         // Compute source sum of bone lengths
         for(let i = 1; i < this.srcBindPose.bones.length; i++) {
@@ -258,7 +259,7 @@ class AnimationRetargeting {
         return trgLength / srcLength
     }
 
-    precomputeRetargetingQuats(){
+    _precomputeRetargetingQuats(){
         //BASIC ALGORITHM --> trglocal = invBindTrgWorldParent * bindSrcWorldParent * srcLocal * invBindSrcWorld * bindTrgWorld
         // trglocal = invBindTrgWorldParent * invTrgEmbedded * srcEmbedded * bindSrcWorldParent * srcLocal * invBindSrcWorld * invSrcEmbedded * trgEmbedded * bindTrgWorld
 
@@ -341,31 +342,32 @@ class AnimationRetargeting {
      */
     retargetPositionTrack( srcTrack ){
         let boneName = srcTrack.name.slice(0, srcTrack.name.length - 9 ); // remove the ".position"
-        let boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
+        const boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
         if ( boneIndex < 0 || this.boneMap.idxMap[ boneIndex ] < 0 ){
             return null;
         } 
         // Retargets the root bone posiiton
-        let srcValues = srcTrack.values;
+        const srcValues = srcTrack.values;
         let trgValues = new Float32Array( srcValues.length );
         if( boneIndex == 0 ) { // asume the first bone is the root
 
-            let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
+            let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
 						
             let pos = new THREE.Vector3();
+            let diffPosition = new THREE.Vector3();
 
             for( let i = 0; i < srcValues.length; i+=3 ){
                 
                 pos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
-                let diffPosition = new THREE.Vector3();
+                if(this.srcBindPose.transformsWorldEmbedded) {
+                    pos.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
+                }
                 diffPosition.subVectors(pos, srcBindPos);
 
                 // Scale the animation difference position with the scale diff between source and target and add it to the the Target Bind Position of the bone
                 diffPosition.multiplyScalar(this.proportionRatio);
-                if(this.srcBindPose.transformsWorldEmbedded) {
-                    diffPosition.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
-                }
+                
                 if(this.trgBindPose.transformsWorldEmbedded) {
                     diffPosition.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
                 }
@@ -387,7 +389,7 @@ class AnimationRetargeting {
      */
     retargetQuaternionTrack( srcTrack ){
         let boneName = srcTrack.name.slice(0, srcTrack.name.length - 11 ); // remove the ".quaternion"
-        let boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
+        const boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
         if ( boneIndex < 0 || this.boneMap.idxMap[ boneIndex ] < 0 ){
             return null;
         } 
@@ -414,8 +416,8 @@ class AnimationRetargeting {
      * @returns {THREE.VectorKeyframeTrack}
      */
     retargetScaleTrack( srcTrack ){
-        let boneName = srcTrack.name.slice(0, srcTrack.name.length - 6 ); // remove the ".scale"
-        let boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
+        const boneName = srcTrack.name.slice(0, srcTrack.name.length - 6 ); // remove the ".scale"
+        const boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
         if ( boneIndex < 0 || this.boneMap.idxMap[ boneIndex ] < 0 ){
             return null;
         } 
