@@ -18,14 +18,16 @@ class App {
         this.loaderGLB = new GLTFLoader();
         this.loaderFBX = new FBXLoader();
         this.GLTFExporter = new GLTFExporter();
-        this.currentCharacter = "";
+        this.currentSourceCharacter = null; // source avatar
+        this.currentCharacter = ""; // target avatar
         this.loadedCharacters = {}; // store avatar loadedCharacters
 
         this.currentAnimation = "";
         this.loadedAnimations = {};
         this.bindedAnimations = {};
 
-        this.mixer = null;
+        this.sourceMixer = null; // source avatar
+        this.mixer = null; // target avatar
         this.playing = false;
 
         this.speed = 1;
@@ -188,20 +190,31 @@ class App {
 
     changeAvatar( avatarName ) {
         let current = this.loadedCharacters[this.currentCharacter];
-        if ( current) {
+        if ( current ) {
             this.scene.remove( current.model ); // delete from scene current model
             this.scene.remove( current.skeletonHelper ); // delete skeleton helper from scene
         }
         
         this.currentCharacter = avatarName;
-        const character =  this.loadedCharacters[this.currentCharacter];
+        const character = this.loadedCharacters[this.currentCharacter];
         this.scene.add( character.model ); // add model to scene
         if(character.skeletonHelper) {
             character.skeletonHelper.visible = this.showSkeletons;
             this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
         }
         character.model.position.x = 1;
-        this.onChangeAvatar(avatarName);
+
+        this.mixer = this.loadedCharacters[avatarName].mixer;
+
+        // clear mixer form any past animations
+        while( this.mixer._actions.length ){
+            this.mixer.uncacheClip(this.mixer._actions[0]._clip);
+        }
+
+        this.changePlayState(this.playing);
+
+        this.boneMap = null;
+
         this.retargeting = null;
 
         if ( this.gui ){ this.gui.refresh(); }
@@ -221,7 +234,15 @@ class App {
             character.skeletonHelper.visible = this.showSkeletons;
             this.scene.add( character.skeletonHelper ); // add skeleton helper to scene
         }
-        this.sourceMixer = this.loadedCharacters[avatarName].mixer;  
+
+        // clear mixer from any past animations
+        this.sourceMixer = this.loadedCharacters[avatarName].mixer;
+        while( this.sourceMixer._actions.length ){
+            this.sourceMixer.uncacheClip( this.sourceMixer._actions[0]._clip );
+        }
+
+        this.loadedAnimations = {};
+        this.bindedAnimations = {};
         let animations = character.animations;
         if(animations && animations.length) {
 
@@ -236,8 +257,7 @@ class App {
             }
         }
         this.currentAnimation = "";
-        this.bindedAnimations = {};
-       
+
         this.retargeting = null;
      
         if ( this.gui ){ this.gui.refresh(); }
@@ -474,18 +494,6 @@ class App {
         this.loadedCharacters[name].mixer = mixer;
     }
 
-    onChangeAvatar(avatarName) {
-        if (!this.loadedCharacters[avatarName]) { 
-            return false; 
-        }
-        this.currentCharacter = avatarName;
-        this.changePlayState(this.playing);
-        this.mixer = this.loadedCharacters[avatarName].mixer;  
-        this.boneMap = null;
-        return true;
-    }
-    
-
     onChangeAnimation(animationName) {
         if(!this.loadedAnimations[animationName]) {
             console.warn(animationName + 'not found')
@@ -503,7 +511,6 @@ class App {
             this.mixer.setTime(0);
         
         }
-        // this.bindAnimationToCharacter(this.currentAnimation, this.currentCharacter);        
     }
 
     onWindowResize() {

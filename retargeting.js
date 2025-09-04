@@ -426,9 +426,9 @@ class AnimationRetargeting {
         const srcValues = srcTrack.values;
         let trgValues = new Float32Array( srcValues.length );
         for( let i = 0; i < srcValues.length; i+=3 ){
-            trgValues[i] = srcValues[i] * scaleRatio;
-            trgValues[i+1] = srcValues[i+1] * scaleRatio;
-            trgValues[i+2] = srcValues[i+2] * scaleRatio;
+            trgValues[i] = srcValues[i] * scaleRatio.x;
+            trgValues[i+1] = srcValues[i+1] * scaleRatio.y;
+            trgValues[i+2] = srcValues[i+2] * scaleRatio.z;
         }
 
 
