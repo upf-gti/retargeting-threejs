@@ -9,13 +9,13 @@ class Gui {
         
         // available model models paths - [model, rotation]
         this.avatarOptions = {
-            "Eva": ['https://webglstudio.org/3Dcharacters/Eva/Eva.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva/Eva.png', false],
-            "ReadyEva": ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.png', false],
-            "Witch": ['https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://webglstudio.org/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
-            "Kevin": ['https://webglstudio.org/3Dcharacters/Kevin/Kevin.glb', 0, 'https://webglstudio.org/3Dcharacters/Kevin/Kevin.png', false],
-            "Ada": ['https://webglstudio.org/3Dcharacters/Ada/Ada.glb', 0, 'https://webglstudio.org/3Dcharacters/Ada/Ada.png', false],
-            "Woman": ['https://webglstudio.org/3Dcharacters/Woman/Woman.glb', 0, "", true],
-            "Dancer": ['https://webglstudio.org/3Dcharacters/Dancer/Dancer.glb', 0, "", true]
+            "Eva": ['https://resources.gti.upf.edu/3Dcharacters/Eva/Eva.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Eva/Eva.png', false],
+            "ReadyEva": ['https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.png', false],
+            "Witch": ['https://resources.gti.upf.edu/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
+            "Kevin": ['https://resources.gti.upf.edu/3Dcharacters/Kevin/Kevin.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Kevin/Kevin.png', false],
+            "Ada": ['https://resources.gti.upf.edu/3Dcharacters/Ada/Ada.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Ada/Ada.png', false],
+            "Woman": ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', 0, "", true],
+            "Dancer": ['https://resources.gti.upf.edu/3Dcharacters/Dancer/Dancer.glb', 0, "", true]
         }
 
         // take canvas from dom, detach from dom, attach to lexgui 
