@@ -45,15 +45,15 @@ class App {
         this.srcIKPose = new IKPose();
         this.trgIKPose = new IKPose();
         
-        this.useIK = true;
+        this.useIK = false;
 
         this.srcRig = null;
         this.trgRig = null;
     }
 
-    init() {        
+    async init() {        
         this.scene = new THREE.Scene();
-        let sceneColor = 0xa0a0a0;//0x303030;
+        let sceneColor = 0x1e1e1e;//0x303030;
         this.scene.background = new THREE.Color( sceneColor );
         this.scene.fog = new THREE.Fog( sceneColor, 10, 50 );
 
@@ -68,43 +68,24 @@ class App {
         document.body.appendChild( this.renderer.domElement );
 
         //include lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambientLight);
-
-        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
-        hemiLight.position.set( 0, 50, 0 );
-        this.scene.add( hemiLight );
-
-        const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
-        dirLight.position.set( - 1, 1.75, 1 );
-        dirLight.position.multiplyScalar( 30 );
-        this.scene.add( dirLight );
-
-        dirLight.castShadow = true;
-
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-
-        const d = 50;
-
-        dirLight.shadow.camera.left = - d;
-        dirLight.shadow.camera.right = d;
-        dirLight.shadow.camera.top = d;
-        dirLight.shadow.camera.bottom = - d;
-
-        dirLight.shadow.camera.far = 3500;
-        dirLight.shadow.bias = - 0.0001;
+        this.initLights();
 
         // add entities
-        let ground = new THREE.Mesh( new THREE.PlaneGeometry( 300, 300 ), new THREE.MeshStandardMaterial( { color: 0xcbcbcb, depthWrite: true, roughness: 1, metalness: 0 } ) );
+        const gridHelper = new THREE.GridHelper( 50, 50 );
+        gridHelper.position.set(0,0.001,0);
+        gridHelper.material.color.set( 0x1e1e1e);
+        gridHelper.material.opacity = 0.2;
+        this.grid = gridHelper;
+        this.scene.add( gridHelper );
+        
+        const groundGeo = new THREE.PlaneGeometry(10, 10);
+        const groundMat = new THREE.ShadowMaterial({ opacity: 0.2 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
         ground.receiveShadow = true;
-        this.scene.add( ground );
+        this.ground = ground;
 
-        const grid = new THREE.GridHelper(300, 300, 0x101010, 0x555555 );
-        grid.name = "Grid";
-        this.scene.add(grid);
-       
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 1000);
         this.camera.position.set(0,1.2,2);
         this.controls = new OrbitControls( this.camera, this.renderer.domElement );
@@ -122,25 +103,76 @@ class App {
         if(urlParams.has('controls')) {
             showControls = !(urlParams.get('controls') === "false");
         }
-        let modelToLoad = ['bmlTest.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        this.loadAvatar(modelToLoad[0], modelToLoad[1], "bmlTest", "glb", ()=>{
-            this.changeSourceAvatar( "bmlTest" );
-            modelToLoad = ['https://webglstudio.org/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-            this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
-                this.gui = new Gui( this ); 
-                this.changeAvatar( "ReadyEva" );
-                this.animate();
-                document.getElementById("loading").style.display = "none";
-                this.isAppReady = true;
-                        
-            });                    
-        });
-       
-        
+     
+        let loadingPromises = [];
 
+        // let p = new Promise( resolve => {
+        //     let modelToLoad = ['KNAPP.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+
+        //     this.loadAvatar(modelToLoad[0], modelToLoad[1], "KNAPP", "glb", ()=>{
+        //         resolve();                        
+        //     });                    
+        // });
+        let p = new Promise( resolve => {
+            let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
+                resolve();
+            });
+            
+        } );
+        loadingPromises.push( p );
+        
+        p = new Promise( resolve => {
+            let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "ReadyEva", "glb", ()=>{
+                resolve();    
+            });
+        } );
+        loadingPromises.push( p );
+
+        // wait until all avatars are loaded
+        await Promise.all( loadingPromises );
+        
+        // now, prepare and run the application
+        this.changeSourceAvatar( "Woman" );                         
+        this.gui = new Gui( this ); 
+        this.changeAvatar( "ReadyEva" );
+        this.animate();
+        document.getElementById("loading").style.display = "none";
+        this.isAppReady = true;
+        
         window.addEventListener( 'resize', this.onWindowResize.bind(this) );
     }
 
+    initLights() {
+        // lights
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x8d8d8d, 1 );
+        hemiLight.position.set( 0, 20, 0 );
+        this.scene.add( hemiLight );
+       
+        // Left spotlight
+        const spotLight = new THREE.SpotLight( 0xffffff, 9 );
+        spotLight.position.set(-2,2,2);
+        spotLight.penumbra = 1;
+        spotLight.castShadow = false;
+        this.scene.add( spotLight );
+        
+        // Right spotlight
+        const spotLight2 = new THREE.SpotLight( 0xffffff, 9 );
+        spotLight2.position.set(1, 3, 1.5);
+        spotLight2.penumbra = 1;
+        spotLight2.castShadow = true;
+        spotLight2.shadow.bias = -0.0001;
+        spotLight2.shadow.mapSize.width = 2048;
+        spotLight2.shadow.mapSize.height = 2048;
+        this.scene.add( spotLight2 );
+        
+        const spotLightTarget = new THREE.Object3D();
+        spotLightTarget.position.set(0, 1.5, 0); 
+        this.scene.add( spotLightTarget );
+        spotLight.target = spotLightTarget;
+        spotLight2.target = spotLightTarget;
+    }
     animate() {
 
         requestAnimationFrame( this.animate.bind(this) );
@@ -154,13 +186,13 @@ class App {
         this.boneMapScene.update();
         const zoom = this.controls.getDistance();
         if( zoom > 80) {
-            this.scene.getObjectByName("Grid").visible = false;
+            this.grid.visible = false;
 
             this.scene.fog.near = zoom;
             this.scene.fog.far = zoom + 100;
         }
         else {
-            this.scene.getObjectByName("Grid").visible = true;
+            this.grid.visible = true;
             this.scene.fog.near = 20;
             this.scene.fog.far = zoom + 50;
         }
@@ -251,68 +283,24 @@ class App {
                 model.castShadow = true;
                 let skeleton = null;
                 let bones = [];
-                if(avatarName == "Witch") {
-                    model.traverse( (object) => {
-                        if ( object.isMesh || object.isSkinnedMesh ) {
-                                              
-                            if(!object.name.includes("Hat"))
-                               object.material.side = THREE.FrontSide;
-                            object.frustumCulled = false;
-                            object.castShadow = true;
-                            object.receiveShadow = true;
-                            if (object.name == "Eyelashes") // eva
+                
+                model.traverse( (object) => {
+                    if ( object.isMesh || object.isSkinnedMesh ) {                        
+                        object.material.side = THREE.FrontSide;
+                        object.frustumCulled = false;
+                        object.castShadow = true;
+                        object.receiveShadow = true;
+                        if (object.name == "Eyelashes") // eva
                             object.castShadow = false;
-                            if(object.material.map) 
+                        if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                            if(object.name == "Hair") {
-                                object.material.map = null;
-                                object.material.color.set(0x6D1881);
-                            }
-                            if(object.name.includes("Bottom")) {
-                                object.material.map = null;
-                                object.material.color.set(0x000000);
-                            }
-                            if(object.name.includes("Top")) {
-                                object.material.map = null;
-                                object.material.color.set(0x000000);
-                            }
-                            if(object.name.includes("Shoes")) {
-                                object.material.map = null;
-                                object.material.color.set(0x19A7A3);
-                            }
-                        } else if (object.isBone) {
-                            object.scale.set(1.0, 1.0, 1.0);                    
-                            bones.push(object);
-                        }
-                        if (object.skeleton){
-                            skeleton = object.skeleton; 
-                        }  
-                    } );
-                }else{
-                    model.traverse( (object) => {
-                        if ( object.isMesh || object.isSkinnedMesh ) {                        
-                            object.material.side = THREE.FrontSide;
-                            object.frustumCulled = false;
-                            object.castShadow = true;
-                            object.receiveShadow = true;
-                            if (object.name == "Eyelashes") // eva
-                                object.castShadow = false;
-                            if(object.material.map) 
-                                object.material.map.anisotropy = 16;
-                        } else if(object.isBone) {
-                            bones.push(object);
-                        }                               
-                        if (object.skeleton){
-                            skeleton = object.skeleton;                         
-                        }
-                    } );
-        
-                }
-    
-                if ( avatarName == "Kevin" ){
-                    let hair = model.getObjectByName( "Classic_short" );
-                    if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
-                }
+                    } else if(object.isBone) {
+                        bones.push(object);
+                    }                               
+                    if (object.skeleton){
+                        skeleton = object.skeleton;                         
+                    }
+                } );               
                             
                 model.name = avatarName;
                 
@@ -344,69 +332,25 @@ class App {
                 model.castShadow = true;
                 let skeleton = null;
                 let bones = [];
-                if(avatarName == "Witch") {
-                    model.traverse( (object) => {
-                        if ( object.isMesh || object.isSkinnedMesh ) {
-                                              
-                            if(!object.name.includes("Hat"))
-                               object.material.side = THREE.FrontSide;
-                            object.frustumCulled = false;
-                            object.castShadow = true;
-                            object.receiveShadow = true;
-                            if (object.name == "Eyelashes") // eva
+                
+                model.traverse( (object) => {
+                    if ( object.isMesh || object.isSkinnedMesh ) {                        
+                        object.material.side = THREE.FrontSide;
+                        object.frustumCulled = false;
+                        object.castShadow = true;
+                        object.receiveShadow = true;
+                        if (object.name == "Eyelashes") // eva
                             object.castShadow = false;
-                            if(object.material.map) 
+                        if(object.material.map) 
                             object.material.map.anisotropy = 16;
-                            if(object.name == "Hair") {
-                                object.material.map = null;
-                                object.material.color.set(0x6D1881);
-                            }
-                            if(object.name.includes("Bottom")) {
-                                object.material.map = null;
-                                object.material.color.set(0x000000);
-                            }
-                            if(object.name.includes("Top")) {
-                                object.material.map = null;
-                                object.material.color.set(0x000000);
-                            }
-                            if(object.name.includes("Shoes")) {
-                                object.material.map = null;
-                                object.material.color.set(0x19A7A3);
-                            }
-                        } else if (object.isBone) {
-                            object.scale.set(1.0, 1.0, 1.0);                    
-                            bones.push(object);
-                        }
-                        if (object.skeleton){
-                            skeleton = object.skeleton; 
-                        }  
-                    } );
-                }else{
-                    model.traverse( (object) => {
-                        if ( object.isMesh || object.isSkinnedMesh ) {                        
-                            object.material.side = THREE.FrontSide;
-                            object.frustumCulled = false;
-                            object.castShadow = true;
-                            object.receiveShadow = true;
-                            if (object.name == "Eyelashes") // eva
-                                object.castShadow = false;
-                            if(object.material.map) 
-                                object.material.map.anisotropy = 16;
-                        } else if(object.isBone) {
-                            bones.push(object);
-                        }                               
-                        if (object.skeleton){
-                            skeleton = object.skeleton;                         
-                        }
-                    } );
-        
-                }
-    
-                if ( avatarName == "Kevin" ){
-                    let hair = model.getObjectByName( "Classic_short" );
-                    if( hair && hair.children.length > 1 ){ hair.children[1].renderOrder = 1; }
-                }
-                            
+                    } else if(object.isBone) {
+                        bones.push(object);
+                    }                               
+                    if (object.skeleton){
+                        skeleton = object.skeleton;                         
+                    }
+                } );
+                      
                 model.name = avatarName;
                 
                 let animations = glb.animations;
@@ -463,7 +407,7 @@ class App {
         if(this.currentCharacter) {
             this.loadedCharacters[this.currentCharacter].skeletonHelper.visible = visibility;
         }
-        this.scene.getObjectByName("Grid").visible = visibility;
+        this.grid.visible = visibility;
     }
 
     onLoadAvatar(newAvatar, name){      

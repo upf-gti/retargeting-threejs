@@ -365,17 +365,17 @@ class IKPose {
         this.applyLookTwist( rig, rig.points.hand_l, this.leftHand, LEFT, BACK );
         this.applyLookTwist( rig, rig.points.hand_r, this.rightHand, RIGHT, BACK );
         // // Fingers
-        // this.applyLimb(rig, rig.chains.thumb_r, this.rightThumb);
-        // this.applyLimb(rig, rig.chains.index_r, this.rightIndex);
-        // this.applyLimb(rig, rig.chains.middle_r, this.rightMiddle);
-        // this.applyLimb(rig, rig.chains.ring_r, this.rightRing);
-        // this.applyLimb(rig, rig.chains.pinky_r, this.rightPinky);
+        this.applyLimb(rig, rig.chains.thumb_r, this.rightThumb);
+        this.applyLimb(rig, rig.chains.index_r, this.rightIndex);
+        this.applyLimb(rig, rig.chains.middle_r, this.rightMiddle);
+        this.applyLimb(rig, rig.chains.ring_r, this.rightRing);
+        this.applyLimb(rig, rig.chains.pinky_r, this.rightPinky);
 
-        // this.applyLimb(rig, rig.chains.thumb_l, this.leftThumb);
-        // this.applyLimb(rig, rig.chains.index_l, this.leftIndex);
-        // this.applyLimb(rig, rig.chains.middle_l, this.leftMiddle);
-        // this.applyLimb(rig, rig.chains.ring_l, this.leftRing);
-        // this.applyLimb(rig, rig.chains.pinky_l, this.leftPinky);
+        this.applyLimb(rig, rig.chains.thumb_l, this.leftThumb);
+        this.applyLimb(rig, rig.chains.index_l, this.leftIndex);
+        this.applyLimb(rig, rig.chains.middle_l, this.leftMiddle);
+        this.applyLimb(rig, rig.chains.ring_l, this.leftRing);
+        this.applyLimb(rig, rig.chains.pinky_l, this.leftPinky);
 
         // this.applyLookTwist( rig, rig.points.neck, this.neck, FORWARD, UP );
         // this.applyLookTwist( rig, rig.points.head, this.head, FORWARD, UP );

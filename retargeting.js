@@ -12,41 +12,18 @@ class AnimationRetargeting {
     */
     static BindPoseModes = { DEFAULT : 0, CURRENT: 1}
     static boneMap = {
+        "Hips":			  "hips",
+        "BelowStomach":   "spine",
+        "Stomach":  	  "spine1",
+        "ShouldersUnion": "spine2", // chest
+        "Neck":           "neck",
+        "Head":           "head",
         "LEye":           "lefteye",
         "REye":           "righteye",
-        "Head":           "head",
-        "Neck":           "neck",
-        "ShouldersUnion": "spine2", // chest
-        "Stomach":  	  "spine1",
-        "BelowStomach":   "spine",
-        "Hips":			  "hips",
-        "RShoulder":      "rightshoulder",
-        "RArm":           "rightarm",
-        "RElbow":         "rightforearm",
-        "RHandThumb":     "righthandthumb1",
-        "RHandThumb2":    "righthandthumb2",
-        "RHandThumb3":    "righthandthumb3",
-        "RHandThumb4":    "righthandthumb4",
-        "RHandIndex":     "righthandindex1",
-        "RHandIndex2":    "righthandindex2",
-        "RHandIndex3":    "righthandindex3",
-        "RHandIndex4":    "righthandindex4",
-        "RHandMiddle":    "righthandmiddle1",
-        "RHandMiddle2":   "righthandmiddle2",
-        "RHandMiddle3":   "righthandmiddle3",
-        "RHandMiddle4":   "righthandmiddle4",
-        "RHandRing":      "righthandring1",
-        "RHandRing2":     "righthandring2",
-        "RHandRing3":     "righthandring3",
-        "RHandRing4":     "righthandring4",
-        "RHandPinky":     "righthandpinky1",
-        "RHandPinky2":    "righthandpinky2",
-        "RHandPinky3":    "righthandpinky3",
-        "RHandPinky4":    "righthandpinky4",
-        "RWrist":         "righthand",
         "LShoulder":      "leftshoulder",
         "LArm":           "leftarm",
         "LElbow":         "leftforearm",
+        "LWrist":         "lefthand",
         "LHandThumb":     "lefthandthumb1",
         "LHandThumb2":    "lefthandthumb2",
         "LHandThumb3":    "lefthandthumb3",
@@ -67,7 +44,30 @@ class AnimationRetargeting {
         "LHandPinky2":    "lefthandpinky2",
         "LHandPinky3":    "lefthandpinky3",
         "LHandPinky4":    "lefthandpinky4",
-        "LWrist":         "lefthand",
+        "RShoulder":      "rightshoulder",
+        "RArm":           "rightarm",
+        "RElbow":         "rightforearm",
+        "RWrist":         "righthand",
+        "RHandThumb":     "righthandthumb1",
+        "RHandThumb2":    "righthandthumb2",
+        "RHandThumb3":    "righthandthumb3",
+        "RHandThumb4":    "righthandthumb4",
+        "RHandIndex":     "righthandindex1",
+        "RHandIndex2":    "righthandindex2",
+        "RHandIndex3":    "righthandindex3",
+        "RHandIndex4":    "righthandindex4",
+        "RHandMiddle":    "righthandmiddle1",
+        "RHandMiddle2":   "righthandmiddle2",
+        "RHandMiddle3":   "righthandmiddle3",
+        "RHandMiddle4":   "righthandmiddle4",
+        "RHandRing":      "righthandring1",
+        "RHandRing2":     "righthandring2",
+        "RHandRing3":     "righthandring3",
+        "RHandRing4":     "righthandring4",
+        "RHandPinky":     "righthandpinky1",
+        "RHandPinky2":    "righthandpinky2",
+        "RHandPinky3":    "righthandpinky3",
+        "RHandPinky4":    "righthandpinky4",
         "LUpLeg":         "leftupleg",
         "LLeg":           "leftleg",
         "LFoot":          "leftfoot",
@@ -75,6 +75,282 @@ class AnimationRetargeting {
         "RLeg":           "rightleg",
         "RFoot":          "rightfoot",
     };
+
+    static boneHierarchy = {
+        "LEye":           6,
+        "REye":           6,
+        "Head":           5,
+        "Neck":           4,
+        "ShouldersUnion": 3, // chest
+        "Stomach":  	  2,
+        "BelowStomach":   1,
+        "Hips":			  0,
+        "RShoulder":      4,
+        "RArm":           5,
+        "RElbow":         6,
+        "RWrist":         7,
+        "RHandThumb":     8,
+        "RHandThumb2":    9,
+        "RHandThumb3":    10,
+        "RHandThumb4":    11,
+        "RHandIndex":     8,
+        "RHandIndex2":    9,
+        "RHandIndex3":    10,
+        "RHandIndex4":    11,
+        "RHandMiddle":    8,
+        "RHandMiddle2":   9,
+        "RHandMiddle3":   10,
+        "RHandMiddle4":   11,
+        "RHandRing":      8,
+        "RHandRing2":     9,
+        "RHandRing3":     10,
+        "RHandRing4":     11,
+        "RHandPinky":     8,
+        "RHandPinky2":    9,
+        "RHandPinky3":    10,
+        "RHandPinky4":    11,
+        "LShoulder":      4,
+        "LArm":           5,
+        "LElbow":         6,
+        "LWrist":         7,
+        "LHandThumb":     8,
+        "LHandThumb2":    9,
+        "LHandThumb3":    10,
+        "LHandThumb4":    11,
+        "LHandIndex":     8,
+        "LHandIndex2":    9,
+        "LHandIndex3":    10,
+        "LHandIndex4":    11,
+        "LHandMiddle":    8,
+        "LHandMiddle2":   9,
+        "LHandMiddle3":   10,
+        "LHandMiddle4":   11,
+        "LHandRing":      8,
+        "LHandRing2":     9,
+        "LHandRing3":     10,
+        "LHandRing4":     11,
+        "LHandPinky":     8,
+        "LHandPinky2":    9,
+        "LHandPinky3":    10,
+        "LHandPinky4":    11,
+        "LUpLeg":         1,
+        "LLeg":           2,
+        "LFoot":          3,
+        "RUpLeg":         1,
+        "RLeg":           2,
+        "RFoot":          3,
+    };
+
+    static standardBones = () => {
+        const Hips = new THREE.Bone();
+        Hips.name = "Hips";
+        const BelowStomach = new THREE.Bone();
+        BelowStomach.name = "BelowStomach";
+        const Stomach = new THREE.Bone();
+        Stomach.name = "Stomach";
+        const ShouldersUnion = new THREE.Bone();
+        ShouldersUnion.name = "ShouldersUnion";
+        const Neck = new THREE.Bone();
+        Neck.name = "Neck";
+        const Head = new THREE.Bone();
+        Head.name = "Head";
+        const LEye = new THREE.Bone();
+        LEye.name = "LEye";
+        const REye = new THREE.Bone();
+        REye.name = "REye";
+        const LShoulder = new THREE.Bone();
+        LShoulder.name = "LShoulder";
+        const LArm = new THREE.Bone();
+        LArm.name = "LArm";
+        const LElbow = new THREE.Bone();
+        LElbow.name = "LElbow";
+        const LWrist = new THREE.Bone();
+        LWrist.name = "LWrist";
+        const LHandThumb = new THREE.Bone();
+        LHandThumb.name = "LHandThumb";
+        const LHandThumb2 = new THREE.Bone();
+        LHandThumb2.name = "LHandThumb2";
+        const LHandThumb3 = new THREE.Bone();
+        LHandThumb3.name = "LHandThumb3";
+        const LHandThumb4 = new THREE.Bone();
+        LHandThumb4.name = "LHandThumb4";
+        const LHandIndex = new THREE.Bone();
+        LHandIndex.name = "LHandIndex";
+        const LHandIndex2 = new THREE.Bone();
+        LHandIndex2.name = "LHandIndex2";
+        const LHandIndex3 = new THREE.Bone();
+        LHandIndex3.name = "LHandIndex3";
+        const LHandIndex4 = new THREE.Bone();
+        LHandIndex4.name = "LHandIndex4";
+        const LHandMiddle = new THREE.Bone();
+        LHandMiddle.name = "LHandMiddle";
+        const LHandMiddle2 = new THREE.Bone();
+        LHandMiddle2.name = "LHandMiddle2";
+        const LHandMiddle3 = new THREE.Bone();
+        LHandMiddle3.name = "LHandMiddle3";
+        const LHandMiddle4 = new THREE.Bone();
+        LHandMiddle4.name = "LHandMiddle4";
+        const LHandRing = new THREE.Bone();
+        LHandRing.name = "LHandRing";
+        const LHandRing2 = new THREE.Bone();
+        LHandRing2.name = "LHandRing2";
+        const LHandRing3 = new THREE.Bone();
+        LHandRing3.name = "LHandRing3";
+        const LHandRing4 = new THREE.Bone();
+        LHandRing4.name = "LHandRing4";
+        const LHandPinky = new THREE.Bone();
+        LHandPinky.name = "LHandPinky";
+        const LHandPinky2 = new THREE.Bone();
+        LHandPinky2.name = "LHandPinky2";
+        const LHandPinky3 = new THREE.Bone();
+        LHandPinky3.name = "LHandPinky3";
+        const LHandPinky4 = new THREE.Bone();
+        LHandPinky4.name = "LHandPinky4";
+        const RShoulder = new THREE.Bone();
+        RShoulder.name = "RShoulder";
+        const RArm = new THREE.Bone();
+        RArm.name = "RArm";
+        const RElbow = new THREE.Bone();
+        RElbow.name = "RElbow";
+        const RWrist = new THREE.Bone();
+        RWrist.name = "RWrist";
+        const RHandThumb = new THREE.Bone();
+        RHandThumb.name = "RHandThumb";
+        const RHandThumb2 = new THREE.Bone();
+        RHandThumb2.name = "RHandThumb2";
+        const RHandThumb3 = new THREE.Bone();
+        RHandThumb3.name = "RHandThumb3";
+        const RHandThumb4 = new THREE.Bone();
+        RHandThumb4.name = "RHandThumb4";
+        const RHandIndex = new THREE.Bone();
+        RHandIndex.name = "RHandIndex";
+        const RHandIndex2 = new THREE.Bone();
+        RHandIndex2.name = "RHandIndex2";
+        const RHandIndex3 = new THREE.Bone();
+        RHandIndex3.name = "RHandIndex3";
+        const RHandIndex4 = new THREE.Bone();
+        RHandIndex4.name = "RHandIndex4";
+        const RHandMiddle = new THREE.Bone();
+        RHandMiddle.name = "RHandMiddle";
+        const RHandMiddle2 = new THREE.Bone();
+        RHandMiddle2.name = "RHandMiddle2";
+        const RHandMiddle3 = new THREE.Bone();
+        RHandMiddle3.name = "RHandMiddle3";
+        const RHandMiddle4 = new THREE.Bone();
+        RHandMiddle4.name = "RHandMiddle4";
+        const RHandRing = new THREE.Bone();
+        RHandRing.name = "RHandRing";
+        const RHandRing2 = new THREE.Bone();
+        RHandRing2.name = "RHandRing2";
+        const RHandRing3 = new THREE.Bone();
+        RHandRing3.name = "RHandRing3";
+        const RHandRing4 = new THREE.Bone();
+        RHandRing4.name = "RHandRing4";
+        const RHandPinky = new THREE.Bone();
+        RHandPinky.name = "RHandPinky";
+        const RHandPinky2 = new THREE.Bone();
+        RHandPinky2.name = "RHandPinky2";
+        const RHandPinky3 = new THREE.Bone();
+        RHandPinky3.name = "RHandPinky3";
+        const RHandPinky4 = new THREE.Bone();
+        RHandPinky4.name = "RHandPinky4";
+        const LUpLeg = new THREE.Bone();
+        LUpLeg.name = "LUpLeg";
+        const LLeg = new THREE.Bone();
+        LLeg.name = "LLeg";
+        const LFoot = new THREE.Bone();
+        LFoot.name = "LFoot";
+        const RUpLeg = new THREE.Bone();
+        RUpLeg.name = "RUpLeg";
+        const RLeg = new THREE.Bone();
+        RLeg.name = "RLeg";
+        const RFoot = new THREE.Bone();
+        RFoot.name = "RFoot";
+
+        Hips.add(BelowStomach);
+
+        BelowStomach.add(Stomach);
+        Stomach.add(ShouldersUnion);
+
+        ShouldersUnion.add(Neck);
+        ShouldersUnion.add(LShoulder)
+        ShouldersUnion.add(RShoulder);
+        
+        Neck.add(Head);
+        Head.add(LEye);
+        Head.add(REye);
+
+        LShoulder.add(LArm);
+        LArm.add(LElbow);
+        LElbow.add(LWrist);
+
+        LWrist.add(LHandThumb);
+        LWrist.add(LHandIndex);
+        LWrist.add(LHandMiddle);
+        LWrist.add(LHandRing);
+        LWrist.add(LHandPinky);
+
+        LHandThumb.add(LHandThumb2);
+        LHandThumb2.add(LHandThumb3);
+        LHandThumb3.add(LHandThumb4);
+
+        LHandIndex.add(LHandIndex2);
+        LHandIndex2.add(LHandIndex3);
+        LHandIndex3.add(LHandIndex4);
+
+        LHandMiddle.add(LHandMiddle2);
+        LHandMiddle2.add(LHandMiddle3);
+        LHandMiddle3.add(LHandMiddle4);
+
+        LHandRing.add(LHandRing2);
+        LHandRing2.add(LHandRing3);
+        LHandRing3.add(LHandRing4);
+
+        LHandPinky.add(LHandPinky2);
+        LHandPinky2.add(LHandPinky3);
+        LHandPinky3.add(LHandPinky4);
+
+        RShoulder.add(RArm);
+        RArm.add(RElbow);
+        RElbow.add(RWrist);
+
+        RWrist.add(RHandThumb);
+        RWrist.add(RHandIndex);
+        RWrist.add(RHandMiddle);
+        RWrist.add(RHandRing);
+        RWrist.add(RHandPinky);
+
+        RHandThumb.add(RHandThumb2);
+        RHandThumb2.add(RHandThumb3);
+        RHandThumb3.add(RHandThumb4);
+
+        RHandIndex.add(RHandIndex2);
+        RHandIndex2.add(RHandIndex3);
+        RHandIndex3.add(RHandIndex4);
+
+        RHandMiddle.add(RHandMiddle2);
+        RHandMiddle2.add(RHandMiddle3);
+        RHandMiddle3.add(RHandMiddle4);
+
+        RHandRing.add(RHandRing2);
+        RHandRing2.add(RHandRing3);
+        RHandRing3.add(RHandRing4);
+
+        RHandPinky.add(RHandPinky2);
+        RHandPinky2.add(RHandPinky3);
+        RHandPinky3.add(RHandPinky4);
+
+        Hips.add(LUpLeg);
+        LUpLeg.add(LLeg);
+        LLeg.add(LFoot);
+
+        Hips.add(RUpLeg);
+        RUpLeg.add(RLeg);
+        RLeg.add(RFoot);
+
+        return [ Hips, BelowStomach, Stomach, ShouldersUnion, Neck, Head, LEye, REye, LShoulder, LArm, LElbow, LWrist, LHandThumb, LHandThumb2, LHandThumb3, LHandThumb4, LHandIndex, LHandIndex2, LHandIndex3, LHandIndex4, LHandMiddle, LHandMiddle2, LHandMiddle3, LHandMiddle4, LHandRing, LHandRing2, LHandRing3, LHandRing4, LHandPinky, LHandPinky2, LHandPinky3, LHandPinky4, RShoulder, RArm, RElbow, RWrist, RHandThumb, RHandThumb2, RHandThumb3, RHandThumb4, RHandIndex, RHandIndex2, RHandIndex3, RHandIndex4, RHandMiddle, RHandMiddle2, RHandMiddle3, RHandMiddle4, RHandRing, RHandRing2, RHandRing3, RHandRing4, RHandPinky, RHandPinky2, RHandPinky3, RHandPinky4, LUpLeg, LLeg, LFoot, RUpLeg, RLeg, RFoot ];
+    
+    }
     /**
      * Retargets animations and/or current poses from one skeleton to another. 
      * Both skeletons must have the same bind pose (same orientation for each mapped bone) in order to properly work.
@@ -221,16 +497,16 @@ class AnimationRetargeting {
         else {
             // automap
             const auxBoneMap = Object.keys(AnimationRetargeting.boneMap);
-            this.srcBoneMap = computeAutoBoneMap( srcSkeleton );
-            this.trgBoneMap = computeAutoBoneMap( trgSkeleton );
-            if(this.srcBoneMap.idxMap.length && this.trgBoneMap.idxMap.length) {
+            const srcBoneMap = computeAutoBoneMap( srcSkeleton );
+            const trgBoneMap = computeAutoBoneMap( trgSkeleton );
+            if(srcBoneMap.idxMap.length && trgBoneMap.idxMap.length) {
                 for(let i = 0; i < auxBoneMap.length; i++) {           
                     const name = auxBoneMap[i];
-                    if(this.srcBoneMap.idxMap[i] < 0) {
+                    if(srcBoneMap.idxMap[i] < 0) {
                         continue;
                     }
-                    result.idxMap[this.srcBoneMap.idxMap[i]] = this.trgBoneMap.idxMap[i];
-                    result.nameMap[ this.srcBoneMap.nameMap[name]] = this.trgBoneMap.nameMap[name]; 
+                    result.idxMap[srcBoneMap.idxMap[i]] = trgBoneMap.idxMap[i];
+                    result.nameMap[ srcBoneMap.nameMap[name]] = trgBoneMap.nameMap[name]; 
                 }
             }
         }
@@ -849,7 +1125,6 @@ function alignBoneToAxis(bone, axis, child) {
         bone.updateMatrixWorld(false, true);
     }
 }
-   
 
 /**
  * Maps automatically bones from the skeleton to an auxiliar map. 
@@ -857,30 +1132,108 @@ function alignBoneToAxis(bone, axis, child) {
  * @param {THREE.Skeleton} srcSkeleton 
  * @returns {object} { idxMap: [], nameMape: {} }
  */
-function computeAutoBoneMap( skeleton ){
-    const auxBoneMap = Object.keys(AnimationRetargeting.boneMap);
+function computeAutoBoneMap( skeleton){
+    let auxBones = AnimationRetargeting.standardBones();
+
     let bones = skeleton.bones;
     let result = {
-        idxMap: new Int16Array( auxBoneMap.length ),
+        idxMap: new Int16Array( auxBones.length ),
         nameMap: {} 
     };
-
+    
     result.idxMap.fill( -1 ); // default to no map;
-    // automap
-    for(let i = 0; i < auxBoneMap.length; i++) {
-        const auxName = auxBoneMap[i];
-        for( let j = 0; j < bones.length; ++j ){
-            let name = bones[j].name;
-            if ( typeof( name ) !== "string" ){ continue; }
-            name = name.toLowerCase().replace( "mixamorig", "" ).replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "" );
-            if ( name.length < 1 ){ continue; }
-            if(name.toLowerCase().includes(auxName.toLocaleLowerCase()) || name.toLowerCase().includes(AnimationRetargeting.boneMap[auxName].toLocaleLowerCase())) {
-                result.nameMap[auxName] = bones[j].name;
+    for( let i = 0; i < auxBones.length; i++ ) {
+        const auxBoneName = auxBones[i].name;
+
+        for( let j = 0; j < bones.length; ++j ) {
+            let boneName = bones[j].name;
+
+            if( typeof( boneName ) !== "string" ) { continue; }
+            boneName = boneName.toLowerCase().replace( "mixamorig", "" ).replace( /[`~!@#$%^&*()_|+\-=?;:'"<>\{\}\\\/]/gi, "" );
+            if( boneName.length < 1 ) { continue; }
+            
+            if( boneName.toLowerCase() == auxBoneName.toLocaleLowerCase() || boneName.toLowerCase() == AnimationRetargeting.boneMap[auxBoneName].toLocaleLowerCase()) {
+                result.nameMap[auxBoneName] = bones[j].name;
                 result.idxMap[i] = j;
                 break;
             }
-        }                
+        }
     }
+
+    //assumes bone 0 is root (hips)
+    const auxData = computeHierarchyData(auxBones[0])
+    const boneData = computeHierarchyData(bones[0])
+ 
+    // mapping based on hierarchy
+    for( let i = 0; i < auxBones.length; i++ ) {
+        const auxBoneName = auxBones[i].name;
+        if( result.nameMap[auxBoneName] ) {
+            continue;
+        }
+        const auxBone = auxBones[i]
+        const auxBoneInfo = getBoneInfo( auxBone, auxData.depth, auxData.descendantCount);
+
+        for (let j = 0; j < bones.length; j++) {
+            if (result.idxMap.indexOf(j) > -1 ) continue;
+            
+            const bone = bones[j];
+            const boneInfo = getBoneInfo(bone, boneData.depth, boneData.descendantCount);
+
+            if (sameBoneInfo(auxBoneInfo, boneInfo)) {
+                result.nameMap[auxBoneName] = bones[j].name;
+                result.idxMap[i] = j;
+                break
+            }
+        }
+
+        if (!result.nameMap[auxBoneName]) {
+            console.warn( 'Failed to match bone by hierarchy structure: ' + auxBoneName);
+        }
+    }
+
     return result;
+}
+
+function computeHierarchyData( root ) {
+  const depth = {}
+  const descendantCount = {}
+
+  const traverse = (bone, d) => {
+    depth[bone.name] = d
+    let count = 0
+
+    for (let i = 0; i < bone.children.length; i++) {
+      const child = bone.children[i]
+      if (child.isBone) {
+        count += 1 + traverse(child, d + 1)
+      }
+    }
+
+    descendantCount[bone.name] = count
+    return count
+  }
+
+  traverse(root, 0)
+  return { depth, descendantCount }
+}
+
+function getBoneInfo(bone, depth, descendantCount) {
+   const info = 
+   {
+    depth: depth[bone.name],
+    parentDepth: (bone.parent && bone.parent.isBone) ? depth[bone.parent.name] : -1,
+    childCount: bone.children.length,
+    descendantCount: descendantCount[bone.name]
+  }
+  return info;
+}
+
+function sameBoneInfo(a, b) {
+  return (
+    a.depth === b.depth &&
+    a.parentDepth === b.parentDepth &&
+    a.childCount === b.childCount //&&
+    //a.descendantCount === b.descendantCount
+  )
 }
 export { AnimationRetargeting, findIndexOfBone, findIndexOfBoneByName, forceBindPoseQuats, applyTPose, computeAutoBoneMap };
