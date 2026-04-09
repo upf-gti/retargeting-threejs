@@ -71,32 +71,6 @@ class App {
 
         //include lights
         this.initLights();
-        // const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        // this.scene.add(ambientLight);
-
-        // const hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 2 );
-        // hemiLight.position.set( 0, 50, 0 );
-        // this.scene.add( hemiLight );
-
-        // const dirLight = new THREE.DirectionalLight( 0xffffff, 3 );
-        // dirLight.position.set( - 1, 1.75, 1 );
-        // dirLight.position.multiplyScalar( 30 );
-        // this.scene.add( dirLight );
-
-        // dirLight.castShadow = true;
-
-        // dirLight.shadow.mapSize.width = 2048;
-        // dirLight.shadow.mapSize.height = 2048;
-
-        // const d = 50;
-
-        // dirLight.shadow.camera.left = - d;
-        // dirLight.shadow.camera.right = d;
-        // dirLight.shadow.camera.top = d;
-        // dirLight.shadow.camera.bottom = - d;
-
-        // dirLight.shadow.camera.far = 3500;
-        // dirLight.shadow.bias = - 0.0001;
 
         // add entities
         const gridHelper = new THREE.GridHelper( 50, 50 );
@@ -134,20 +108,20 @@ class App {
      
         let loadingPromises = [];
 
-        let p = new Promise( resolve => {
-            let modelToLoad = ['KNAPP.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-
-            this.loadAvatar(modelToLoad[0], modelToLoad[1], "KNAPP", "glb", ()=>{
-                resolve();                        
-            });                    
-        });
         // let p = new Promise( resolve => {
-        //     let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
-        //     this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
-        //         resolve();
-        //     });
+        //     let modelToLoad = ['KNAPP.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+
+        //     this.loadAvatar(modelToLoad[0], modelToLoad[1], "KNAPP", "glb", ()=>{
+        //         resolve();                        
+        //     });                    
+        // });
+        let p = new Promise( resolve => {
+            let modelToLoad = ['https://resources.gti.upf.edu/3Dcharacters/Woman/Woman.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
+                resolve();
+            });
             
-        // } );
+        } );
         loadingPromises.push( p );
         
         p = new Promise( resolve => {
@@ -162,7 +136,7 @@ class App {
         await Promise.all( loadingPromises );
         
         // now, prepare and run the application
-        this.changeSourceAvatar( "KNAPP" );                         
+        this.changeSourceAvatar( "Woman" );                         
         this.gui = new Gui( this ); 
         this.changeAvatar( "ReadyEva" );
         this.animate();
