@@ -551,8 +551,10 @@ class AnimationRetargeting {
 
             let resultQuat = new THREE.Quaternion(0,0,0,1);
             resultQuat.copy( this.trgBindPose.transformsWorld[ trgIndex ].q ); // bindTrgWorld
-            if ( this.trgBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.forward.q ); } // trgEmbedded
-            if ( this.srcBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.inverse.q ); } // invSrcEmbedded
+            // if ( this.trgBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.forward.q ); } // trgEmbedded
+            // if ( this.srcBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.inverse.q ); } // invSrcEmbedded
+            // if ( this.trgBindPose.transformsWorldEmbedded && srcIndex == 0 ) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.inverse.q ); } // trgEmbedded
+            // if ( this.srcBindPose.transformsWorldEmbedded && srcIndex == 0 ) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.forward.q ); } // invSrcEmbedded
             resultQuat.premultiply( this.srcBindPose.transformsWorldInverses[ srcIndex ].q ); // invBindSrcWorld
             right[ srcIndex ] = resultQuat;
 
@@ -563,8 +565,10 @@ class AnimationRetargeting {
                 resultQuat.premultiply( this.srcBindPose.transformsWorld[ parentIdx ].q ); 
             }
 
-            if ( this.srcBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.forward.q ); } // srcEmbedded
-            if ( this.trgBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.inverse.q ); } // invTrgEmbedded
+            // if ( this.srcBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.forward.q ); } // srcEmbedded
+            // if ( this.trgBindPose.transformsWorldEmbedded ) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.inverse.q ); } // invTrgEmbedded
+            if ( this.srcBindPose.transformsWorldEmbedded && srcIndex == 0) { resultQuat.premultiply( this.srcBindPose.transformsWorldEmbedded.forward.q ); } // srcEmbedded
+            if ( this.trgBindPose.transformsWorldEmbedded && srcIndex == 0) { resultQuat.premultiply( this.trgBindPose.transformsWorldEmbedded.inverse.q ); } // invTrgEmbedded
 
             // invBindTrgWorldParent
             if ( this.trgBindPose.bones[ trgIndex ].parent ){ 
@@ -629,7 +633,7 @@ class AnimationRetargeting {
             let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             // let trgBindScale = this.trgBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
-            // let srcBindScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
+            let srcBindScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
 						
             let srcCurrentPos = new THREE.Vector3();
 
@@ -637,19 +641,21 @@ class AnimationRetargeting {
                 
                 srcCurrentPos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
                 let diffPosition = new THREE.Vector3().copy(srcBindPos);
-                
+                const ratio = trgBindPos.y/diffPosition.y//* srcBindScale.y//* this.proportionRatio;
+
                 if(this.srcBindPose.transformsWorldEmbedded) {
-                    diffPosition.multiply(this.srcBindPose.transformsWorldEmbedded.inverse.s);
-                    diffPosition.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.inverse.q);
-                    // pos.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
-                    // pos.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
+                    // diffPosition.multiply(this.srcBindPose.transformsWorldEmbedded.inverse.s);
+                    // diffPosition.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.inverse.q);
+                    srcCurrentPos.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
+                    srcCurrentPos.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
                 }
                 if(this.trgBindPose.transformsWorldEmbedded) {
-                    diffPosition.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
-                    diffPosition.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
+                    // diffPosition.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
+                    // diffPosition.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
+                    srcCurrentPos.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
+                    srcCurrentPos.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
                 }
                 
-                const ratio = trgBindPos.y/diffPosition.y //* this.proportionRatio;
                 diffPosition.subVectors(srcCurrentPos, diffPosition);
                 // Scale the animation difference position with the scale diff between source and target and add it to the the Target Bind Position of the bone
                 //diffPosition.multiplyScalar(this.proportionRatio);
@@ -693,22 +699,38 @@ class AnimationRetargeting {
     }
 
     /**
-     * NOT IMPLEMENTEED
      * assumes srcTrack IS a scale track (VectorKeyframeTrack) with the proper values array and name (boneName.scale) 
      * @param {THREE.VectorKeyframeTrack} srcTrack 
      * @returns {THREE.VectorKeyframeTrack}
      */
     retargetScaleTrack( srcTrack ){
-        let boneName = srcTrack.name.slice(0, srcTrack.name.length - 6 ); // remove the ".scale"
-        let boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
+        const boneName = srcTrack.name.slice(0, srcTrack.name.length - 6 ); // remove the ".scale"
+        const boneIndex = findIndexOfBoneByName( this.srcSkeleton, boneName );
         if ( boneIndex < 0 || this.boneMap.idxMap[ boneIndex ] < 0 ){
             return null;
         } 
-        // TODO
+        const srcScale = this.srcBindPose.bones[boneIndex].scale;
+        const trgScale = this.trgBindPose.bones[ this.boneMap.idxMap[ boneIndex ] ].scale;
+        const scaleRatio = trgScale.clone().divide(srcScale);
+        if(this.srcBindPose.transformsWorldEmbedded) {
+            scaleRatio.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
+        }
+        if(this.trgBindPose.transformsWorldEmbedded) {
+            scaleRatio.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
+        }
+        const srcValues = srcTrack.values;
+        let trgValues = new Float32Array( srcValues.length );
+        for( let i = 0; i < srcValues.length; i+=3 ){
+            trgValues[i] = srcValues[i] * scaleRatio.x;
+            trgValues[i+1] = srcValues[i+1] * scaleRatio.y;
+            trgValues[i+2] = srcValues[i+2] * scaleRatio.z;
+        }
+
 
         // TODO missing interpolation mode. Assuming always linear. Also check if arrays are copied or referenced
-        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".scale", srcTrack.times, srcTrack.values ); 
+        return new THREE.VectorKeyframeTrack( this.boneMap.nameMap[ boneName ] + ".scale", srcTrack.times.slice(), trgValues ); 
     }
+
 
     /**
      * Given a clip, all tracks with a mapped bone are retargeted.
@@ -799,7 +821,7 @@ function applyTPose(skeleton, map) {
         }
     }
     
-    let resultSkeleton = skeleton;
+    let resultSkeleton = AnimationRetargeting.prototype.cloneRawSkeleton( skeleton, null, true );
     // Check if spine is extended 
     let spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
     let spineChild = spineBase.children[0];
@@ -873,7 +895,7 @@ function applyTPose(skeleton, map) {
         }
         else {
             hips.quaternion.copy(hipsRot);
-            hips.position.copy(spineDirO);
+            // hips.position.copy(spineDirO);
         }
         // Update bone matrix and children matrices
         hips.updateMatrix();
@@ -1088,8 +1110,16 @@ function applyTPose(skeleton, map) {
     }
 
     // resultSkeleton.calculateInverses();
-    resultSkeleton.update(); 
-    return {skeleton: resultSkeleton, map};
+    
+    resultSkeleton.update();
+    
+    for(let i = 0; i < skeleton.bones.length; i++) {
+        skeleton.bones[i].position.copy(resultSkeleton.bones[i].position);
+        skeleton.bones[i].quaternion.copy(resultSkeleton.bones[i].quaternion);
+        skeleton.bones[i].scale.copy(resultSkeleton.bones[i].scale);
+        skeleton.bones[i].updateMatrix();
+    }
+    return {skeleton: skeleton, map};
 }
 
 /**
