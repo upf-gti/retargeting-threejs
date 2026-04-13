@@ -632,33 +632,25 @@ class AnimationRetargeting {
 
             let trgBindPos = this.trgBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
             let srcBindPos = this.srcBindPose.bones[boneIndex].getWorldPosition(new THREE.Vector3());
-            // let trgBindScale = this.trgBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
-            let srcBindScale = this.srcBindPose.bones[boneIndex].getWorldScale(new THREE.Vector3());
-						
             let srcCurrentPos = new THREE.Vector3();
 
             for( let i = 0; i < srcValues.length; i+=3 ){
                 
                 srcCurrentPos.set( srcValues[i], srcValues[i+1], srcValues[i+2]);
                 let diffPosition = new THREE.Vector3().copy(srcBindPos);
-                const ratio = trgBindPos.y/diffPosition.y//* srcBindScale.y//* this.proportionRatio;
+                const ratio = trgBindPos.y/diffPosition.y
 
                 if(this.srcBindPose.transformsWorldEmbedded) {
-                    // diffPosition.multiply(this.srcBindPose.transformsWorldEmbedded.inverse.s);
-                    // diffPosition.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.inverse.q);
-                    srcCurrentPos.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
-                    srcCurrentPos.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
+                srcCurrentPos.applyQuaternion(this.srcBindPose.transformsWorldEmbedded.forward.q);
+                   srcCurrentPos.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
                 }
                 if(this.trgBindPose.transformsWorldEmbedded) {
-                    // diffPosition.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
-                    // diffPosition.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
                     srcCurrentPos.applyQuaternion(this.trgBindPose.transformsWorldEmbedded.inverse.q);
                     srcCurrentPos.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
                 }
                 
                 diffPosition.subVectors(srcCurrentPos, diffPosition);
                 // Scale the animation difference position with the scale diff between source and target and add it to the the Target Bind Position of the bone
-                //diffPosition.multiplyScalar(this.proportionRatio);
 			    diffPosition.multiplyScalar(ratio).add(trgBindPos);
 
                 trgValues[i]   = diffPosition.x;
@@ -712,10 +704,10 @@ class AnimationRetargeting {
         const srcScale = this.srcBindPose.bones[boneIndex].scale;
         const trgScale = this.trgBindPose.bones[ this.boneMap.idxMap[ boneIndex ] ].scale;
         const scaleRatio = trgScale.clone().divide(srcScale);
-        if(this.srcBindPose.transformsWorldEmbedded) {
+        if(this.srcBindPose.transformsWorldEmbedded && boneIndex == 0) {
             scaleRatio.multiply(this.srcBindPose.transformsWorldEmbedded.forward.s);
         }
-        if(this.trgBindPose.transformsWorldEmbedded) {
+        if(this.trgBindPose.transformsWorldEmbedded && boneIndex == 0) {
             scaleRatio.multiply(this.trgBindPose.transformsWorldEmbedded.inverse.s);
         }
         const srcValues = srcTrack.values;
@@ -821,7 +813,7 @@ function applyTPose(skeleton, map) {
         }
     }
     
-    let resultSkeleton = AnimationRetargeting.prototype.cloneRawSkeleton( skeleton, null, true );
+    let resultSkeleton = AnimationRetargeting.prototype.cloneRawSkeleton( skeleton, AnimationRetargeting.BindPoseModes.CURRENT, true );
     // Check if spine is extended 
     let spineBase = resultSkeleton.getBoneByName(map.BelowStomach); // spine
     let spineChild = spineBase.children[0];
