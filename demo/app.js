@@ -6,8 +6,9 @@ import { BVHLoader } from './BVHeLoader.js';
 import { BVHExporter } from './BVHExporter.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js' 
 import { Gui } from './gui.js'
-import { AnimationRetargeting, applyTPose } from '../retargeting.js'
+import { AnimationRetargeting, applyTPose, findIndexOfBone } from '../retargeting.js'
 import BoneMappingScene from './boneMapping.js';
+import {FABRIKSolver} from '../IKSolver.js';
 
 class App {
     constructor() {
@@ -627,7 +628,9 @@ class App {
                 bodyAnimation.tracks = tracks;  
                 if( this.retargeting )
                 {
-                    bodyAnimation = this.retargeting.retargetAnimation(bodyAnimation);
+                    const targetAnim = this.retargeting.retargetAnimation(bodyAnimation);
+                    this.applyIKrefinement(bodyAnimation, targetAnim, this.retargeting)
+                    bodyAnimation = targetAnim;
                 }
                 
                 this.validateAnimationClip(bodyAnimation);
@@ -727,6 +730,102 @@ class App {
         }
     }
 
+    
+    applyIKrefinement( srcAnim, trgAnim) {
+         
+        const srcBoneMap = this.retargeting.boneMap.srcBoneMap;
+        const trgBoneMap = this.retargeting.boneMap.trgBoneMap;
+
+        const srcMixer = new THREE.AnimationMixer(this.retargeting.srcSkeleton);
+        srcMixer.clipAction(srcAnim);
+        const trgMixer = new THREE.AnimationMixer(this.retargeting.trgSkeleton);
+        trgMixer.clipAction(trgAnim);
+
+        // const srcLArm = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LArm);
+        // const srcLElbow = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LElbow);
+        // const srcLWrist = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
+
+        // const LhumerusL = srcLArm.distanceTo(srcLElbow);
+        // const LradiusL = srcLElbow.distanceTo(srcLWrist);
+        
+        const trgLArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LArm);
+        const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
+        const trgLWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LWrist);
+
+        const srcRArm = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RArm);
+        const srcRElbow = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RElbow);
+        const srcRWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RWrist);
+
+        const trgRArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RArm);
+        const trgRElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RElbow);
+        const trgRWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RWrist);
+
+        const ikSolver = new FABRIKSolver( this.retargeting.trgSkeleton );
+        const LArmTarget = new THREE.Object3D();
+        ikSolver.createChain([findIndexOfBone(trgLWrist), findIndexOfBone(trgLElbow), findIndexOfBone(trgLArm)], null, LArmTarget, "LArm");
+        ikSolver.setChainEnabler( "LArm", false );
+        ikSolver.createChain([findIndexOfBone(trgRWrist), findIndexOfBone(trgRElbow), findIndexOfBone(trgRArm)], null, new THREE.Object3D(), "RArm");
+        ikSolver.setChainEnabler( "RArm", false );
+
+        let tracks = { LArm: null, LElbow: null, RArm: null, RElbow: null};
+        for(let i = 0; i < trgAnim.tracks.length; i++ ) {
+            const track = trgAnim.tracks[i];
+            if(track.name.includes(trgBoneMap.nameMap.LArm) && track.name.includes("quaternion")) {
+                tracks.LArm = track;
+            }
+            if(track.name.includes(trgBoneMap.nameMap.LElbow) && track.name.includes("quaternion")) {
+                tracks.LElbow = track;
+            }
+            if(track.name.includes(trgBoneMap.nameMap.RArm) && track.name.includes("quaternion")) {
+                tracks.RArm = track;
+            }
+            if(track.name.includes(trgBoneMap.nameMap.RElbow) && track.name.includes("quaternion")) {
+                tracks.RElbow = track;
+            }
+        }
+
+        srcMixer.setTime(0.01);
+        trgMixer.setTime(0.01);
+        const times = srcAnim.tracks[0].times;
+        for(let i = 0; i < times.length; i++) {
+            const t = times[i];
+            srcMixer.setTime(t);
+            trgMixer.setTime(t);
+
+            const srcLWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
+            srcLWrist.updateWorldMatrix( true, false );
+            let srcLWristMat = srcLWrist.matrix.clone();
+            let parent = srcLWrist.parent;
+            while( parent.name != srcBoneMap.nameMap.ShouldersUnion ) {
+                srcLWristMat.premultiply(parent.matrix);
+                parent = parent.parent;
+            }
+            srcLWristMat.premultiply(parent.matrix);
+
+            ikSolver.setChainEnabler( "LArm", true );
+            
+            const trgShouldersUnion = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.ShouldersUnion);
+            trgShouldersUnion.updateWorldMatrix( true, false );
+            const targetLWristMat = new THREE.Matrix4().multiplyMatrices(trgShouldersUnion.matrixWorld, srcLWristMat);
+            LArmTarget.position.setFromMatrixPosition(targetLWristMat);
+            ikSolver.setChainEnabler( "LArm", false );
+            ikSolver.update();
+
+            const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
+            trgLElbow.updateWorldMatrix( true, false );
+            let q = trgLElbow.quaternion;
+            tracks.LElbow.values[i] = q.x;
+            tracks.LElbow.values[i+1] = q.y;
+            tracks.LElbow.values[i+2] = q.z;
+            tracks.LElbow.values[i+3] = q.w;
+
+            q = trgLElbow.parent.quaternion;
+            tracks.LArm.values[i] = q.x;
+            tracks.LArm.values[i+1] = q.y;
+            tracks.LArm.values[i+2] = q.z;
+            tracks.LArm.values[i+3] = q.w;
+        }
+    }
     exportRetargetAnimation(filename, animation, format) {
 
         const innerDownload = function(filename, stringData, type = "text/plain") {

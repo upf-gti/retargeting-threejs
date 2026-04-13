@@ -508,6 +508,8 @@ class AnimationRetargeting {
                     result.idxMap[srcBoneMap.idxMap[i]] = trgBoneMap.idxMap[i];
                     result.nameMap[ srcBoneMap.nameMap[name]] = trgBoneMap.nameMap[name]; 
                 }
+                result.srcBoneMap = srcBoneMap;
+                result.trgBoneMap = trgBoneMap;
             }
         }
 
@@ -744,7 +746,8 @@ class AnimationRetargeting {
         } 
 
         // negative duration: automatically computes proper duration of animation based on tracks
-        return new THREE.AnimationClip( anim.name, -1, trgTracks, anim.blendMode ); 
+        const trgAnim =  new THREE.AnimationClip( anim.name, -1, trgTracks, anim.blendMode );
+        return trgAnim;
     }
 }
 
