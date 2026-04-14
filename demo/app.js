@@ -587,7 +587,7 @@ class App {
      * @param {String} animationName 
      * @param {String} characterName 
      */
-    bindAnimationToCharacter(animationName, characterName) {
+    async bindAnimationToCharacter(animationName, characterName) {
         
         let animationData = this.loadedAnimations[animationName];
         if(!animationData) {
@@ -629,7 +629,7 @@ class App {
                 if( this.retargeting )
                 {
                     const targetAnim = this.retargeting.retargetAnimation(bodyAnimation);
-                    this.applyIKrefinement(bodyAnimation, targetAnim, this.retargeting)
+                    await this.applyIKrefinement(bodyAnimation, targetAnim, this.retargeting)
                     bodyAnimation = targetAnim;
                 }
                 
@@ -731,100 +731,170 @@ class App {
     }
 
     
-    applyIKrefinement( srcAnim, trgAnim) {
-         
-        const srcBoneMap = this.retargeting.boneMap.srcBoneMap;
-        const trgBoneMap = this.retargeting.boneMap.trgBoneMap;
+    async applyIKrefinement( srcAnim, trgAnim) {
+        return new Promise( (resolve, reject) => {
 
-        const srcMixer = new THREE.AnimationMixer(this.retargeting.srcSkeleton);
-        srcMixer.clipAction(srcAnim);
-        const trgMixer = new THREE.AnimationMixer(this.retargeting.trgSkeleton);
-        trgMixer.clipAction(trgAnim);
+            const srcBoneMap = this.retargeting.boneMap.srcBoneMap;
+            const trgBoneMap = this.retargeting.boneMap.trgBoneMap;
 
-        // const srcLArm = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LArm);
-        // const srcLElbow = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LElbow);
-        // const srcLWrist = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
+            const srcMixer = new THREE.AnimationMixer(this.retargeting.srcSkeleton.bones[0].parent.parent);
+            srcMixer.clipAction(srcAnim).play();
+            const trgMixer = new THREE.AnimationMixer(this.retargeting.trgSkeleton.bones[0].parent.parent);
+            trgMixer.clipAction(trgAnim).play();
 
-        // const LhumerusL = srcLArm.distanceTo(srcLElbow);
-        // const LradiusL = srcLElbow.distanceTo(srcLWrist);
-        
-        const trgLArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LArm);
-        const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
-        const trgLWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LWrist);
+            // const srcLArm = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LArm);
+            // const srcLElbow = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LElbow);
+            // const srcLWrist = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
 
-        const srcRArm = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RArm);
-        const srcRElbow = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RElbow);
-        const srcRWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RWrist);
+            // const LhumerusL = srcLArm.distanceTo(srcLElbow);
+            // const LradiusL = srcLElbow.distanceTo(srcLWrist);
+            
+            const trgLArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LArm);
+            const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
+            const trgLWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LWrist);
 
-        const trgRArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RArm);
-        const trgRElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RElbow);
-        const trgRWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RWrist);
+            const srcRArm = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RArm);
+            const srcRElbow = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RElbow);
+            const srcRWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RWrist);
 
-        const ikSolver = new FABRIKSolver( this.retargeting.trgSkeleton );
-        const LArmTarget = new THREE.Object3D();
-        ikSolver.createChain([findIndexOfBone(trgLWrist), findIndexOfBone(trgLElbow), findIndexOfBone(trgLArm)], null, LArmTarget, "LArm");
-        ikSolver.setChainEnabler( "LArm", false );
-        ikSolver.createChain([findIndexOfBone(trgRWrist), findIndexOfBone(trgRElbow), findIndexOfBone(trgRArm)], null, new THREE.Object3D(), "RArm");
-        ikSolver.setChainEnabler( "RArm", false );
+            const trgRArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RArm);
+            const trgRElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RElbow);
+            const trgRWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RWrist);
 
-        let tracks = { LArm: null, LElbow: null, RArm: null, RElbow: null};
-        for(let i = 0; i < trgAnim.tracks.length; i++ ) {
-            const track = trgAnim.tracks[i];
-            if(track.name.includes(trgBoneMap.nameMap.LArm) && track.name.includes("quaternion")) {
-                tracks.LArm = track;
+            const ikSolver = new FABRIKSolver( this.retargeting.trgSkeleton );
+            const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
+            const material = new THREE.MeshBasicMaterial( { color: 0xffff00, depthTest: false } );
+            const LArmTarget = new THREE.Mesh( geometry, material );
+            // const LArmTarget = new THREE.Object3D();
+            this.retargeting.trgSkeleton.bones[0].parent.add(LArmTarget);
+            ikSolver.createChain([findIndexOfBone(trgLWrist), findIndexOfBone(trgLElbow), findIndexOfBone(trgLArm)], null, LArmTarget, "LArm");
+            ikSolver.setChainEnabler( "LArm", false );
+            ikSolver.createChain([findIndexOfBone(trgRWrist), findIndexOfBone(trgRElbow), findIndexOfBone(trgRArm)], null, new THREE.Object3D(), "RArm");
+            ikSolver.setChainEnabler( "RArm", false );
+
+            let tracks = { LArm: null, LElbow: null, RArm: null, RElbow: null};
+            for(let i = 0; i < trgAnim.tracks.length; i++ ) {
+                const track = trgAnim.tracks[i];
+                if(track.name.includes(trgBoneMap.nameMap.LArm) && track.name.includes("quaternion")) {
+                    tracks.LArm = track;
+                }
+                if(track.name.includes(trgBoneMap.nameMap.LElbow) && track.name.includes("quaternion")) {
+                    tracks.LElbow = track;
+                }
+                if(track.name.includes(trgBoneMap.nameMap.RArm) && track.name.includes("quaternion")) {
+                    tracks.RArm = track;
+                }
+                if(track.name.includes(trgBoneMap.nameMap.RElbow) && track.name.includes("quaternion")) {
+                    tracks.RElbow = track;
+                }
             }
-            if(track.name.includes(trgBoneMap.nameMap.LElbow) && track.name.includes("quaternion")) {
-                tracks.LElbow = track;
-            }
-            if(track.name.includes(trgBoneMap.nameMap.RArm) && track.name.includes("quaternion")) {
-                tracks.RArm = track;
-            }
-            if(track.name.includes(trgBoneMap.nameMap.RElbow) && track.name.includes("quaternion")) {
-                tracks.RElbow = track;
-            }
-        }
-
-        srcMixer.setTime(0.01);
-        trgMixer.setTime(0.01);
-        const times = srcAnim.tracks[0].times;
-        for(let i = 0; i < times.length; i++) {
-            const t = times[i];
-            srcMixer.setTime(t);
-            trgMixer.setTime(t);
-
+            
             const srcLWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
-            srcLWrist.updateWorldMatrix( true, false );
-            let srcLWristMat = srcLWrist.matrix.clone();
-            let parent = srcLWrist.parent;
-            while( parent.name != srcBoneMap.nameMap.ShouldersUnion ) {
-                srcLWristMat.premultiply(parent.matrix);
+            const srcLShoulders = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion)
+            
+            let parent = this.retargeting.srcBindPose.getBoneByName(srcBoneMap.nameMap.LWrist).parent;
+            let pos = this.retargeting.srcBindPose.getBoneByName(srcBoneMap.nameMap.LWrist).getWorldPosition(new THREE.Vector3());
+            let srcDistance = 0;
+            while( parent.name != srcBoneMap.nameMap.LShoulder ) {
+                const parentPos = parent.getWorldPosition(new THREE.Vector3());
+                srcDistance += parentPos.distanceTo(pos);
+                pos.copy(parentPos);
                 parent = parent.parent;
             }
-            srcLWristMat.premultiply(parent.matrix);
-
-            ikSolver.setChainEnabler( "LArm", true );
             
-            const trgShouldersUnion = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.ShouldersUnion);
-            trgShouldersUnion.updateWorldMatrix( true, false );
-            const targetLWristMat = new THREE.Matrix4().multiplyMatrices(trgShouldersUnion.matrixWorld, srcLWristMat);
-            LArmTarget.position.setFromMatrixPosition(targetLWristMat);
-            ikSolver.setChainEnabler( "LArm", false );
-            ikSolver.update();
+            parent = this.retargeting.trgBindPose.getBoneByName(trgBoneMap.nameMap.LWrist).parent;;
+            pos = this.retargeting.trgBindPose.getBoneByName(trgBoneMap.nameMap.LWrist).getWorldPosition(new THREE.Vector3());
+            let trgDistance = 0;
+            while( parent.name != trgBoneMap.nameMap.LShoulder ) {
+                const parentPos = parent.getWorldPosition(new THREE.Vector3());
+                trgDistance += parentPos.distanceTo(pos);
+                pos.copy(parentPos);
+                parent = parent.parent;
+            }
 
-            const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
-            trgLElbow.updateWorldMatrix( true, false );
-            let q = trgLElbow.quaternion;
-            tracks.LElbow.values[i] = q.x;
-            tracks.LElbow.values[i+1] = q.y;
-            tracks.LElbow.values[i+2] = q.z;
-            tracks.LElbow.values[i+3] = q.w;
+            const scaleF = trgDistance/srcDistance;
 
-            q = trgLElbow.parent.quaternion;
-            tracks.LArm.values[i] = q.x;
-            tracks.LArm.values[i+1] = q.y;
-            tracks.LArm.values[i+2] = q.z;
-            tracks.LArm.values[i+3] = q.w;
-        }
+            const LArmSrc = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0xff00ff, depthTest: false }) );
+            srcLShoulders.add(LArmSrc);
+
+            srcMixer.update(0.01);
+            trgMixer.update(0.01);
+            const times = srcAnim.tracks[0].times;
+            for(let i = 0; i < times.length; i++) {
+                const t = times[i];
+                srcMixer.setTime(t);
+                // srcMixer.update(0);
+                trgMixer.setTime(t);
+                // trgMixer.update(0);
+
+                srcLWrist.updateWorldMatrix( true, false );
+                let srcLWristMat = srcLWrist.matrixWorld.clone();
+                // srcLWristMat.premultiply(srcLShoulders.matrixWorld.clone().invert());
+                // const srcLWristPos = new THREE.Vector3().setFromMatrixPosition(srcLWristMat);
+                const srcLWristPos = srcLWrist.getWorldPosition(new THREE.Vector3());
+                srcLShoulders.updateMatrixWorld();
+                const srcLShoulderWM = srcLShoulders.matrixWorld.clone();
+                const position = new THREE.Vector3();
+                const quaternion = new THREE.Quaternion();
+                const scale = new THREE.Vector3();
+                srcLShoulderWM.decompose(position, quaternion, scale);
+                srcLShoulderWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
+
+                
+                srcLWristPos.applyMatrix4(srcLShoulderWM.invert());
+                // LArmSrc.position.setFromMatrixPosition(srcLWristMat);
+                LArmSrc.position.copy(srcLWristPos);
+                LArmSrc.scale.set(10,10,10)
+                srcLWristPos.multiplyScalar(scaleF);
+                // let parent = srcLWrist.parent;
+                // while( parent.name != srcBoneMap.nameMap.ShouldersUnion ) {
+                //     srcLWristMat.premultiply(parent.matrix);
+                //     parent = parent.parent;
+                // }
+                // const parentMatrix = parent.matrix.clone();
+                // if(this.retargeting.srcSkeleton.bones[0].parent) {
+                //     parentMatrix.premultiply(this.retargeting.srcSkeleton.bones[0].parent.matrix);
+                // }
+                //srcLWristMat.premultiply(parentMatrix);
+                ikSolver.setChainEnabler( "LArm", true );
+                
+                const trgShouldersUnion = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.ShouldersUnion);
+                trgShouldersUnion.updateMatrixWorld();
+                const trgLShoulderWM = trgShouldersUnion.matrixWorld.clone();
+                trgLShoulderWM.decompose(position, quaternion, scale);
+                trgLShoulderWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
+
+                srcLWristPos.applyMatrix4(trgLShoulderWM);
+                // const targetLWristMat = new THREE.Matrix4().multiplyMatrices(trgShouldersUnion.matrixWorld, srcLWristMat);
+                // LArmTarget.position.setFromMatrixPosition(targetLWristMat);
+                LArmTarget.position.copy(srcLWristPos);
+                const target = LArmTarget.clone();
+                target.position.copy(srcLWristPos);
+                this.retargeting.trgSkeleton.bones[0].parent.add(target);
+
+                ikSolver.setChainEnabler( "LArm", false );
+                ikSolver.update();
+
+                const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
+                trgLElbow.updateWorldMatrix( true, false );
+                let q = trgLElbow.quaternion;
+                tracks.LElbow.values[i] = q.x;
+                tracks.LElbow.values[i+1] = q.y;
+                tracks.LElbow.values[i+2] = q.z;
+                tracks.LElbow.values[i+3] = q.w;
+
+                q = trgLElbow.parent.quaternion;
+                tracks.LArm.values[i] = q.x;
+                tracks.LArm.values[i+1] = q.y;
+                tracks.LArm.values[i+2] = q.z;
+                tracks.LArm.values[i+3] = q.w;
+            }
+            srcMixer.uncacheRoot(this.retargeting.srcSkeleton.bones[0].parent.parent);
+            trgMixer.uncacheRoot(this.retargeting.trgSkeleton.bones[0].parent.parent);
+            srcMixer.uncacheClip(srcAnim);
+            trgMixer.uncacheClip(trgAnim);
+            resolve();
+        })
     }
     exportRetargetAnimation(filename, animation, format) {
 
