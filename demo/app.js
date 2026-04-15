@@ -110,7 +110,7 @@ class App {
             
         // } );
         let p = new Promise( resolve => {
-            let modelToLoad = ['animations.glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
+            let modelToLoad = ['animations (2).glb', (new THREE.Quaternion()).setFromAxisAngle( new THREE.Vector3(1,0,0), 0 ) ];
             this.loadAvatar(modelToLoad[0], modelToLoad[1], "Woman", "glb", ()=>{
                 resolve();
             });
@@ -640,7 +640,8 @@ class App {
                 {
                     const targetAnim = this.retargeting.retargetAnimation(bodyAnimation);
                     if(this.applyIK) {
-                        await this.applyIKrefinement(bodyAnimation, targetAnim, this.retargeting)
+                        const ikSolver = new FABRIKSolver(this.retargeting.trgSkeleton);
+                        await this.retargeting.applyIKrefinement(bodyAnimation, targetAnim, ikSolver)
                     }
                     bodyAnimation = targetAnim;
                 }
@@ -743,284 +744,151 @@ class App {
     }
 
     
-    async applyIKrefinement( srcAnim, trgAnim) {
-        return new Promise( (resolve, reject) => {
+    // async applyIKrefinement( srcAnim, trgAnim) {
+    //     return new Promise( (resolve, reject) => {
 
-            const srcBoneMap = this.retargeting.boneMap.srcBoneMap;
-            const trgBoneMap = this.retargeting.boneMap.trgBoneMap;
+    //         const srcBoneMap = this.retargeting.boneMap.srcBoneMap;
+    //         const trgBoneMap = this.retargeting.boneMap.trgBoneMap;
 
-            const srcMixer = new THREE.AnimationMixer(this.retargeting.srcSkeleton.bones[0].parent.parent);
-            srcMixer.clipAction(srcAnim).play();
-            const trgMixer = new THREE.AnimationMixer(this.retargeting.trgSkeleton.bones[0].parent.parent);
-            trgMixer.clipAction(trgAnim).play();
-
-            // const srcLArm = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LArm);
-            // const srcLElbow = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LElbow);
-            // const srcLWrist = this.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
-
-            // const LhumerusL = srcLArm.distanceTo(srcLElbow);
-            // const LradiusL = srcLElbow.distanceTo(srcLWrist);
+    //         const srcMixer = new THREE.AnimationMixer(this.retargeting.srcSkeleton.bones[0].parent.parent);
+    //         srcMixer.clipAction(srcAnim).play();
+    //         const trgMixer = new THREE.AnimationMixer(this.retargeting.trgSkeleton.bones[0].parent.parent);
+    //         trgMixer.clipAction(trgAnim).play();
             
-            const trgLArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LArm);
-            const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
-            const trgLWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LWrist);
+    //         const trgLArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LArm);
+    //         const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
+    //         const trgLWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LWrist);
 
-            const srcRArm = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RArm);
-            const srcRElbow = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RElbow);
-            const srcRWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RWrist);
+    //         const srcRArm = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RArm);
+    //         const srcRElbow = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RElbow);
+    //         const srcRWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.RWrist);
 
-            const trgRArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RArm);
-            const trgRElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RElbow);
-            const trgRWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RWrist);
+    //         const trgRArm = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RArm);
+    //         const trgRElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RElbow);
+    //         const trgRWrist = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.RWrist);
 
-            const ikSolver = new FABRIKSolver( this.retargeting.trgSkeleton );
-            const geometry = new THREE.BoxGeometry( 0.1, 0.1, 0.1 );
-            const material = new THREE.MeshBasicMaterial( { color: 0xffff00, depthTest: false } );
-            const LArmTarget = new THREE.Mesh( geometry, material );
-            // const LArmTarget = new THREE.Object3D();
-            this.retargeting.trgSkeleton.bones[0].parent.parent.parent.add(LArmTarget);
-            ikSolver.createChain([findIndexOfBone( this.retargeting.trgSkeleton, trgLWrist), findIndexOfBone( this.retargeting.trgSkeleton, trgLElbow), findIndexOfBone( this.retargeting.trgSkeleton, trgLArm)], null, LArmTarget, "LArm");
-            ikSolver.setChainEnabler( "LArm", false );
-            let chain = ikSolver.getChain("LArm");
-            chain.length = 0;
-            chain.srcLength = 0;
+    //         const ikSolver = new FABRIKSolver( this.retargeting.trgSkeleton );
+    //         const geometry = new THREE.BoxGeometry( 0.005, 0.005, 0.005 );
+    //         const material = new THREE.MeshBasicMaterial( { color: 0xffff00, depthTest: false } );
+    //         const LArmTarget = new THREE.Mesh( geometry, material );
+    //         const RArmTarget = new THREE.Mesh( geometry, material );
+    //         this.retargeting.trgSkeleton.bones[0].parent.parent.parent.add(LArmTarget);
+    //         ikSolver.createChain([findIndexOfBone( this.retargeting.trgSkeleton, trgLWrist), findIndexOfBone( this.retargeting.trgSkeleton, trgLElbow), findIndexOfBone( this.retargeting.trgSkeleton, trgLArm)], null, LArmTarget, "LArm");
+    //         ikSolver.setChainEnabler( "LArm", false );
+    //         let chain = ikSolver.getChain("LArm");
+    //         chain.length = 0;
+    //         chain.srcLength = 0;
             
-            ikSolver.createChain([findIndexOfBone( this.retargeting.trgSkeleton, trgRWrist), findIndexOfBone( this.retargeting.trgSkeleton, trgRElbow), findIndexOfBone( this.retargeting.trgSkeleton, trgRArm)], null, new THREE.Object3D(), "RArm");
-            ikSolver.setChainEnabler( "RArm", false );
-            chain = ikSolver.getChain("RArm");
-            chain.length = 0;
-            chain.srcLength = 0;
+    //         ikSolver.createChain([findIndexOfBone( this.retargeting.trgSkeleton, trgRWrist), findIndexOfBone( this.retargeting.trgSkeleton, trgRElbow), findIndexOfBone( this.retargeting.trgSkeleton, trgRArm)], null, RArmTarget, "RArm");
+    //         ikSolver.setChainEnabler( "RArm", false );
+    //         chain = ikSolver.getChain("RArm");
+    //         chain.length = 0;
+    //         chain.srcLength = 0;
 
-            let tracks = { "LArm": [null, null, null], "RArm": [null, null, null]}; // save tracks that modifies bones in chains
-            for(let i = 0; i < trgAnim.tracks.length; i++ ) {
-                const track = trgAnim.tracks[i];
-                for(let j = 0; j < ikSolver.chains.length; j++) {
-                    const bonesIndices = ikSolver.chains[j].chain;
+    //         let tracks = { "LArm": [null, null, null], "RArm": [null, null, null]}; // save tracks that modifies bones in chains
+    //         for(let i = 0; i < trgAnim.tracks.length; i++ ) {
+    //             const track = trgAnim.tracks[i];
+    //             for(let j = 0; j < ikSolver.chains.length; j++) {
+    //                 const bonesIndices = ikSolver.chains[j].chain;
                     
-                    for( let b = 0; b < bonesIndices.length; b++) {
-                        const bone = this.retargeting.trgSkeleton.bones[bonesIndices[b]];
-                        if(track.name.includes(bone.name) && track.name.includes("quaternion")) {
-                            let parentPos = this.retargeting.trgBindPose.bones[bonesIndices[b]].parent.getWorldPosition(new THREE.Vector3());
-                            let pos = this.retargeting.trgBindPose.bones[bonesIndices[b]].getWorldPosition(new THREE.Vector3());
-                            ikSolver.chains[j].length += parentPos.distanceTo(pos);
+    //                 for( let b = 0; b < bonesIndices.length; b++) {
+    //                     const bone = this.retargeting.trgSkeleton.bones[bonesIndices[b]];
+    //                     if(track.name.includes(`${bone.name}.quaternion`)) {
+    //                         let parentPos = this.retargeting.trgBindPose.bones[bonesIndices[b]].parent.getWorldPosition(new THREE.Vector3());
+    //                         let pos = this.retargeting.trgBindPose.bones[bonesIndices[b]].getWorldPosition(new THREE.Vector3());
+    //                         ikSolver.chains[j].length += parentPos.distanceTo(pos);
 
-                            const srcIdx = this.retargeting.boneMap.idxMap.indexOf(bonesIndices[b]);
-                            if( srcIdx > -1 ) {
-                                parentPos = this.retargeting.srcBindPose.bones[srcIdx].parent.getWorldPosition(new THREE.Vector3());
-                                pos = this.retargeting.srcBindPose.bones[srcIdx].getWorldPosition(new THREE.Vector3());
-                                ikSolver.chains[j].srcLength += parentPos.distanceTo(pos);
-                            }
-                            tracks[ikSolver.chains[j].name][b] = track;
-                            continue;
-                        }
-                    }
-                }
-            }
-            // let tracks = { LArm: null, LElbow: null, RArm: null, RElbow: null};
-            // for(let i = 0; i < trgAnim.tracks.length; i++ ) {
-            //     const track = trgAnim.tracks[i];
-            //     if(track.name.includes(trgBoneMap.nameMap.LShoulder) && track.name.includes("quaternion")) {
-            //         tracks.LShoulder = track;
-            //     }
-            //     if(track.name.includes(trgBoneMap.nameMap.LArm) && track.name.includes("quaternion")) {
-            //         tracks.LArm = track;
-            //     }
-            //     if(track.name.includes(trgBoneMap.nameMap.LElbow) && track.name.includes("quaternion")) {
-            //         tracks.LElbow = track;
-            //     }
-            //     if(track.name.includes(trgBoneMap.nameMap.RArm) && track.name.includes("quaternion")) {
-            //         tracks.RArm = track;
-            //     }
-            //     if(track.name.includes(trgBoneMap.nameMap.RElbow) && track.name.includes("quaternion")) {
-            //         tracks.RElbow = track;
-            //     }
-            // }
+    //                         const srcIdx = this.retargeting.boneMap.idxMap.indexOf(bonesIndices[b]);
+    //                         if( srcIdx > -1 ) {
+    //                             parentPos = this.retargeting.srcBindPose.bones[srcIdx].parent.getWorldPosition(new THREE.Vector3());
+    //                             pos = this.retargeting.srcBindPose.bones[srcIdx].getWorldPosition(new THREE.Vector3());
+    //                             ikSolver.chains[j].srcLength += parentPos.distanceTo(pos);
+    //                         }
+    //                         tracks[ikSolver.chains[j].name][b] = track;
+    //                         continue;
+    //                     }
+    //                 }
+    //             }
+    //         }
+           
+    //         const srcLShoulders = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion)
 
-            
-            
-            // const srcLWrist = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.LWrist);
-            const srcLShoulders = this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion)
-            
-            // let parent = this.retargeting.srcBindPose.getBoneByName(srcBoneMap.nameMap.LWrist).parent;
-            // let pos = this.retargeting.srcBindPose.getBoneByName(srcBoneMap.nameMap.LWrist).getWorldPosition(new THREE.Vector3());
-            // let srcDistance = 0;
-            // while( parent.name != srcBoneMap.nameMap.LShoulder ) {
-            //     const parentPos = parent.getWorldPosition(new THREE.Vector3());
-            //     srcDistance += parentPos.distanceTo(pos);
-            //     pos.copy(parentPos);
-            //     parent = parent.parent;
-            // }
-            // if( this.retargeting.srcBindPose.transformsWorldEmbedded ) {
-            //     srcDistance *= this.retargeting.srcBindPose.transformsWorldEmbedded.inverse.s.y;
-            // }
-            const trgShouldersUnion = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.ShouldersUnion);
-            // parent = this.retargeting.trgBindPose.getBoneByName(trgBoneMap.nameMap.LWrist).parent;
-            // pos = this.retargeting.trgBindPose.getBoneByName(trgBoneMap.nameMap.LWrist).getWorldPosition(new THREE.Vector3());
-            // let trgDistance = 0;
-            // while( parent.name != trgBoneMap.nameMap.LShoulder ) {
-            //     const parentPos = parent.getWorldPosition(new THREE.Vector3());
-            //     trgDistance += parentPos.distanceTo(pos);
-            //     pos.copy(parentPos);
-            //     parent = parent.parent;
-            // }
-            // if( this.retargeting.trgBindPose.transformsWorldEmbedded ) {
-            //     trgDistance *= this.retargeting.trgBindPose.transformsWorldEmbedded.forward.s.y;
-            // }
-            // const scaleF = trgDistance/srcDistance;
+    //         const LArmSrc = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0xff00ff, depthTest: false }) );
+    //         srcLShoulders.add(LArmSrc);
 
-            const LArmSrc = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { color: 0xff00ff, depthTest: false }) );
-            srcLShoulders.add(LArmSrc);
-
-            const computeTargetLocation = ( chainName, referenceBone, timeIdx) => {
-                const chain = ikSolver.getChain(chainName);
-                const scaleF = chain.length/chain.srcLength;
-                const endEffector = this.retargeting.srcSkeleton.bones[chain.chain[0]];
-                endEffector.updateWorldMatrix( true, false );
-                let srcEndMat = endEffector.matrixWorld.clone();
-                // srcLWristMat.premultiply(srcLShoulders.matrixWorld.clone().invert());
-                // const srcLWristPos = new THREE.Vector3().setFromMatrixPosition(srcLWristMat);
-                const srcEndPos = endEffector.getWorldPosition(new THREE.Vector3());
-                referenceBone.updateMatrixWorld();
-                const srcReferenceWM = referenceBone.matrixWorld.clone();
-                const position = new THREE.Vector3();
-                const quaternion = new THREE.Quaternion();
-                const scale = new THREE.Vector3();
-                srcReferenceWM.decompose(position, quaternion, scale);
-                srcReferenceWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
+    //         const computeTargetLocation = ( chainName, referenceBone, timeIdx) => {
+    //             const chain = ikSolver.getChain(chainName);
+    //             const scaleF = chain.length/chain.srcLength;
+    //             const endEffector = this.retargeting.srcSkeleton.bones[chain.chain[0]];
+    //             endEffector.updateWorldMatrix( true, false );
+              
+    //             const srcEndPos = endEffector.getWorldPosition(new THREE.Vector3());
+    //             referenceBone.updateMatrixWorld();
+    //             const srcReferenceWM = referenceBone.matrixWorld.clone();
+    //             const position = new THREE.Vector3();
+    //             const quaternion = new THREE.Quaternion();
+    //             const scale = new THREE.Vector3();
+    //             srcReferenceWM.decompose(position, quaternion, scale);
+    //             srcReferenceWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
 
                 
-                srcEndPos.applyMatrix4(srcReferenceWM.invert());
-                // LArmSrc.position.setFromMatrixPosition(srcLWristMat);
-                LArmSrc.position.copy(srcEndPos);
-                LArmSrc.scale.set(1/scaleF,1/scaleF,1/scaleF)
-                srcEndPos.multiplyScalar(scaleF);
-
-                ikSolver.setChainEnabler( chainName, true );
+    //             srcEndPos.applyMatrix4(srcReferenceWM.invert());
                 
-                const trgReferenceName = this.retargeting.boneMap.nameMap[referenceBone.name];
-                const trgReferenceBone = this.retargeting.trgSkeleton.getBoneByName(trgReferenceName);
-                trgReferenceBone.updateMatrixWorld();
-                const trgReferenceWM = trgReferenceBone.matrixWorld.clone();
-                trgReferenceWM.decompose(position, quaternion, scale);
-                trgReferenceWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
+    //             srcEndPos.multiplyScalar(scaleF);
 
-                srcEndPos.applyMatrix4(trgReferenceWM);
-                // const targetLWristMat = new THREE.Matrix4().multiplyMatrices(trgShouldersUnion.matrixWorld, srcLWristMat);
-                // LArmTarget.position.setFromMatrixPosition(targetLWristMat);
-                chain.target.position.copy(srcEndPos);
-                const target = chain.target.clone();
-                target.material = chain.target.material.clone();
-                target.position.copy(srcEndPos);
-                target.material.color.lerp(new THREE.Color(0,0,0), timeIdx/ srcAnim.duration )
-                this.retargeting.trgSkeleton.bones[0].parent.parent.parent.add(target);
+    //             ikSolver.setChainEnabler( chainName, true );
+                
+    //             const trgReferenceName = this.retargeting.boneMap.nameMap[referenceBone.name];
+    //             const trgReferenceBone = this.retargeting.trgSkeleton.getBoneByName(trgReferenceName);
+    //             trgReferenceBone.updateMatrixWorld();
+    //             const trgReferenceWM = trgReferenceBone.matrixWorld.clone();
+    //             trgReferenceWM.decompose(position, quaternion, scale);
+    //             trgReferenceWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
 
-                ikSolver.update();
-                
-                this.retargeting.trgSkeleton.bones[0].updateWorldMatrix( true, true );
-                for(let i = 0; i < chain.chain.length; i++) {
-                    const boneIdx = chain.chain[i];
-                    if(!tracks[chainName][i]) {
-                        continue;
-                    }
-                    let q = this.retargeting.trgSkeleton.bones[boneIdx].quaternion;
-                    tracks[chainName][i].values[timeIdx*4] = q.x;
-                    tracks[chainName][i].values[timeIdx*4+1] = q.y;
-                    tracks[chainName][i].values[timeIdx*4+2] = q.z;
-                    tracks[chainName][i].values[timeIdx*4+3] = q.w;
-                }
-                
-                ikSolver.setChainEnabler( chainName, false );
-            }
+    //             srcEndPos.applyMatrix4(trgReferenceWM);
+    //             chain.target.position.copy(srcEndPos);
+    //             const target = chain.target.clone();
+    //             target.material = chain.target.material.clone();
+    //             target.position.copy(srcEndPos);
+    //             target.material.color.lerp(new THREE.Color(0,0,0), timeIdx/ srcAnim.tracks[0].times.length )
+    //             this.retargeting.trgSkeleton.bones[0].parent.parent.parent.add(target);
 
-            srcMixer.update(0.01);
-            trgMixer.update(0.01);
-            const times = srcAnim.tracks[0].times;
-            for(let i = 0; i < times.length; i++) {
-                const t = times[i];
-                srcMixer.setTime(t);
-                // srcMixer.update(0);
-                trgMixer.setTime(t);
-                // trgMixer.update(0);
-                computeTargetLocation("LArm", this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion), t )
-                // srcLWrist.updateWorldMatrix( true, false );
-                // let srcLWristMat = srcLWrist.matrixWorld.clone();
-                // // srcLWristMat.premultiply(srcLShoulders.matrixWorld.clone().invert());
-                // // const srcLWristPos = new THREE.Vector3().setFromMatrixPosition(srcLWristMat);
-                // const srcLWristPos = srcLWrist.getWorldPosition(new THREE.Vector3());
-                // srcLShoulders.updateMatrixWorld();
-                // const srcLShoulderWM = srcLShoulders.matrixWorld.clone();
-                // const position = new THREE.Vector3();
-                // const quaternion = new THREE.Quaternion();
-                // const scale = new THREE.Vector3();
-                // srcLShoulderWM.decompose(position, quaternion, scale);
-                // srcLShoulderWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
+    //             ikSolver.update();
+                
+    //             this.retargeting.trgSkeleton.bones[0].updateWorldMatrix( true, true );
+    //             for(let i = 0; i < chain.chain.length; i++) {
+    //                 const boneIdx = chain.chain[i];
+    //                 if(!tracks[chainName][i]) {
+    //                     continue;
+    //                 }
+    //                 let q = this.retargeting.trgSkeleton.bones[boneIdx].quaternion;
+    //                 tracks[chainName][i].values[timeIdx*4] = q.x;
+    //                 tracks[chainName][i].values[timeIdx*4+1] = q.y;
+    //                 tracks[chainName][i].values[timeIdx*4+2] = q.z;
+    //                 tracks[chainName][i].values[timeIdx*4+3] = q.w;
+    //             }
+                
+    //             ikSolver.setChainEnabler( chainName, false );
+    //         }
 
-                
-                // srcLWristPos.applyMatrix4(srcLShoulderWM.invert());
-                // // LArmSrc.position.setFromMatrixPosition(srcLWristMat);
-                // LArmSrc.position.copy(srcLWristPos);
-                // LArmSrc.scale.set(1/scaleF,1/scaleF,1/scaleF)
-                // srcLWristPos.multiplyScalar(scaleF);
-                // // // let parent = srcLWrist.parent;
-                // // // while( parent.name != srcBoneMap.nameMap.ShouldersUnion ) {
-                // // //     srcLWristMat.premultiply(parent.matrix);
-                // // //     parent = parent.parent;
-                // // // }
-                // // // const parentMatrix = parent.matrix.clone();
-                // // // if(this.retargeting.srcSkeleton.bones[0].parent) {
-                // // //     parentMatrix.premultiply(this.retargeting.srcSkeleton.bones[0].parent.matrix);
-                // // // }
-                // // //srcLWristMat.premultiply(parentMatrix);
-                // ikSolver.setChainEnabler( "LArm", true );
-                
-                
-                // trgShouldersUnion.updateMatrixWorld();
-                // const trgRootInvWM = this.retargeting.trgSkeleton.bones[0].parent.matrixWorld.clone().invert();
-                // const trgLShoulderWM = trgShouldersUnion.matrixWorld.clone();
-                // trgLShoulderWM.decompose(position, quaternion, scale);
-                // trgLShoulderWM.compose(position, quaternion, new THREE.Vector3(1,1,1));
-                // // trgLShoulderWM.premultiply(trgRootInvWM);
-
-                // srcLWristPos.applyMatrix4(trgLShoulderWM);
-                // // const targetLWristMat = new THREE.Matrix4().multiplyMatrices(trgShouldersUnion.matrixWorld, srcLWristMat);
-                // // LArmTarget.position.setFromMatrixPosition(targetLWristMat);
-                // LArmTarget.position.copy(srcLWristPos);
-                // const target = LArmTarget.clone();
-                // target.material = LArmTarget.material.clone();
-                // target.position.copy(srcLWristPos);
-                // target.material.color.lerp(new THREE.Color(0,0,0), t/ srcAnim.duration )
-                // this.retargeting.trgSkeleton.bones[0].parent.parent.parent.add(target);
-
-                // ikSolver.update();
-                
-                // const trgLElbow = this.retargeting.trgSkeleton.getBoneByName(trgBoneMap.nameMap.LElbow);
-                // trgLElbow.updateWorldMatrix( true, true );
-                // let q = trgLElbow.quaternion;
-                // tracks.LElbow.values[i*4] = q.x;
-                // tracks.LElbow.values[i*4+1] = q.y;
-                // tracks.LElbow.values[i*4+2] = q.z;
-                // tracks.LElbow.values[i*4+3] = q.w;
-                
-                // q = trgLElbow.parent.quaternion;
-                // tracks.LArm.values[i*4] = q.x;
-                // tracks.LArm.values[i*4+1] = q.y;
-                // tracks.LArm.values[i*4+2] = q.z;
-                // tracks.LArm.values[i*4+3] = q.w;
-
-                // q = trgLElbow.parent.parent.quaternion;
-                // tracks.LShoulder.values[i*4] = q.x;
-                // tracks.LShoulder.values[i*4+1] = q.y;
-                // tracks.LShoulder.values[i*4+2] = q.z;
-                // tracks.LShoulder.values[i*4+3] = q.w;
-                // ikSolver.setChainEnabler( "LArm", false );
-            }
-            srcMixer.uncacheRoot(this.retargeting.srcSkeleton.bones[0].parent.parent);
-            trgMixer.uncacheRoot(this.retargeting.trgSkeleton.bones[0].parent.parent);
-            srcMixer.uncacheClip(srcAnim);
-            trgMixer.uncacheClip(trgAnim);
-            resolve();
-        })
-    }
+    //         srcMixer.update(0.01);
+    //         trgMixer.update(0.01);
+    //         const times = srcAnim.tracks[0].times;
+    //         for(let i = 0; i < times.length; i++) {
+    //             const t = times[i];
+    //             srcMixer.setTime(t);
+    //             trgMixer.setTime(t);
+    //             computeTargetLocation("LArm", this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion), i )
+    //             computeTargetLocation("RArm", this.retargeting.srcSkeleton.getBoneByName(srcBoneMap.nameMap.ShouldersUnion), i )
+               
+    //         }
+    //         srcMixer.uncacheRoot(this.retargeting.srcSkeleton.bones[0].parent.parent);
+    //         trgMixer.uncacheRoot(this.retargeting.trgSkeleton.bones[0].parent.parent);
+    //         srcMixer.uncacheClip(srcAnim);
+    //         trgMixer.uncacheClip(trgAnim);
+    //         resolve();
+    //     })
+    // }
     exportRetargetAnimation(filename, animation, format) {
 
         const innerDownload = function(filename, stringData, type = "text/plain") {
