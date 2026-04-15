@@ -222,11 +222,13 @@ class Gui {
                     this.app.trgPoseMode = poseModes.indexOf(v);
                 }, {nameWidth: "200px"});
                 
-                p.sameLine();
+                // p.sameLine();
                 p.addButton(null, "Apply retargeting", () => {
                     this.app.applyRetargeting(this.app.srcEmbeddedTransforms, this.app.trgEmbeddedTransforms, this.app.boneMap);
                     this.refresh();
                 }, { width: "200px"})
+
+                p.addCheckbox("Apply IK", this.app.applyIK, (v) => this.app.applyIK = v);
             }
             
             if(this.app.retargeting) {
