@@ -232,6 +232,9 @@ class Gui {
             }
             
             if(this.app.retargeting) {
+                p.addButton(null, "Apply IK to pose", () => {
+                    this.app.applyIKPose();
+                })
                 p.addButton(null, "Export animation", () => {
                     if(this.app.mixer && this.app.mixer._actions.length) {  
                         this.showExportDialog((name, animation, format) => this.app.exportRetargetAnimation(name, animation, format))                            
