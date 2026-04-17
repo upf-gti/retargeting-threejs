@@ -11,6 +11,8 @@ class Gui {
         this.avatarOptions = {
             "Eva": ['https://resources.gti.upf.edu/3Dcharacters/Eva/Eva.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Eva/Eva.png', false],
             "ReadyEva": ['https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/ReadyEva/ReadyEva.png', false],
+            "Nia": ['https://resources.gti.upf.edu/3Dcharacters/Nia/Nia.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Nia/Nia.png', false],
+            "Joan": ['https://resources.gti.upf.edu/3Dcharacters/Joan/Joan.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Joan/Joan.png', false],
             "Witch": ['https://resources.gti.upf.edu/3Dcharacters/Eva_Witch/Eva_Witch.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Eva_Witch/Eva_Witch.png', false],
             "Kevin": ['https://resources.gti.upf.edu/3Dcharacters/Kevin/Kevin.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Kevin/Kevin.png', false],
             "Ada": ['https://resources.gti.upf.edu/3Dcharacters/Ada/Ada.glb', 0, 'https://resources.gti.upf.edu/3Dcharacters/Ada/Ada.png', false],

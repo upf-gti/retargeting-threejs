@@ -1410,46 +1410,47 @@ function applyTPose(skeleton, map) {
         parent = leftBase.parent;
     }
 
-    leftEnd = resultSkeleton.getBoneByName(map.LWrist);
+
     const innerLoop = (parent) => {
         child = parent.children[0];
         while(parent.children.length) {
-            let pos = child.getWorldPosition(new THREE.Vector3());
-            let parentPos = parent.getWorldPosition(new THREE.Vector3());  
-
+ 
             alignBoneToAxis(parent, xAxis);
             parent = child;
             child = parent.children[0];
         }
     }
+
+    // Extend left hand fingers
+    leftEnd = resultSkeleton.getBoneByName(map.LWrist);
     for(let i = 0; i < leftEnd.children.length; i++) {
         innerLoop(leftEnd.children[i]);
     }
    
     //RIGHT
     // Check if right arm follow the -X axis
-   let rArm = resultSkeleton.getBoneByName(map.RArm).parent;
-   var xAxis = new THREE.Vector3(-1, 0, 0);
-   alignBoneToAxis(rArm, xAxis);
-   // Check if right arm is extended
-   let rightEnd = resultSkeleton.getBoneByName(map.RWrist); // hand
-   let rightBase = rightEnd.parent; 
-   parent = rightBase.parent; 
-   spine = resultSkeleton.getBoneByName(map.ShouldersUnion);
-   while(parent != spine) {
-       let pos = rightBase.getWorldPosition(new THREE.Vector3());
-       let parentPos = parent.getWorldPosition(new THREE.Vector3());  
-       // Compute direction (parent-to-child)
-       let dir = new THREE.Vector3(); 
-       dir.subVectors(pos, parentPos).normalize();
-       alignBoneToAxis(rightBase, dir);
-       rightEnd = rightEnd.parent;
-       rightBase = rightBase.parent; 
-       parent = rightBase.parent;
-   }
+    let rArm = resultSkeleton.getBoneByName(map.RArm).parent;
+    var xAxis = new THREE.Vector3(-1, 0, 0);
+    alignBoneToAxis(rArm, xAxis);
+    // Check if right arm is extended
+    let rightEnd = resultSkeleton.getBoneByName(map.RWrist); // hand
+    let rightBase = rightEnd.parent; 
+    parent = rightBase.parent; 
+    spine = resultSkeleton.getBoneByName(map.ShouldersUnion);
+    while(parent != spine) {
+        let pos = rightBase.getWorldPosition(new THREE.Vector3());
+        let parentPos = parent.getWorldPosition(new THREE.Vector3());  
+        // Compute direction (parent-to-child)
+        let dir = new THREE.Vector3(); 
+        dir.subVectors(pos, parentPos).normalize();
+        alignBoneToAxis(rightBase, dir);
+        rightEnd = rightEnd.parent;
+        rightBase = rightBase.parent; 
+        parent = rightBase.parent;
+    }
 
+    // Extend left hand fingers
     rightEnd = resultSkeleton.getBoneByName(map.RWrist);
-
     for(let i = 0; i < rightEnd.children.length; i++) {
         innerLoop(rightEnd.children[i]);
     }
